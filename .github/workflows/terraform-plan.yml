@@ -1,0 +1,53 @@
+name: Terraform Plan
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ["infra/**", "lambda/**", "frontend/**"]
+
+permissions:
+  id-token: write # required to authenticate against AWS via OIDC
+  contents: read
+
+concurrency:
+  group: terraform-covenas-dashboard
+  cancel-in-progress: false # never cancel a plan/apply mid-flight
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "~> 1.15"
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: terraform init
+        run: terraform init
+
+      - name: terraform validate
+        run: terraform validate
+
+      - name: terraform plan
+        run: |
+          terraform plan -no-color \
+            -var "google_spreadsheet_id=${{ vars.GOOGLE_SPREADSHEET_ID }}" \
+            | tee /tmp/plan.txt
+
+      - name: Publish plan to job summary
+        run: |
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/plan.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

@@ -62,6 +62,12 @@ variable "cloudfront_price_class" {
   default     = "PriceClass_100"
 }
 
+variable "github_repo" {
+  description = "GitHub \"owner/repo\" allowed to assume the CI Terraform role via OIDC."
+  type        = string
+  default     = "Portfolio-jaime/trip-covenas"
+}
+
 variable "frontend_build_dir" {
   description = <<-EOT
     Path to the built static frontend assets to upload to S3, relative to

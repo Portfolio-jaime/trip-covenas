@@ -1,0 +1,49 @@
+name: Terraform Apply
+
+on:
+  push:
+    branches: [main]
+    paths: ["infra/**", "lambda/**", "frontend/**"]
+  workflow_dispatch: {} # manual trigger from the Actions tab
+
+permissions:
+  id-token: write # required to authenticate against AWS via OIDC
+  contents: read
+
+concurrency:
+  group: terraform-covenas-dashboard
+  cancel-in-progress: false # never cancel a plan/apply mid-flight
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    environment: production # manual approval gate — see Settings → Environments → production
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "~> 1.15"
+
+      - name: terraform init
+        run: terraform init
+
+      - name: terraform apply
+        run: |
+          terraform apply -auto-approve -no-color \
+            -var "google_spreadsheet_id=${{ vars.GOOGLE_SPREADSHEET_ID }}"
+
+      - name: Publish outputs to job summary
+        run: |
+          echo '### Dashboard URLs' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          terraform output >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
