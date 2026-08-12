@@ -32,6 +32,13 @@ sa.local.json
 *.local.json
 google-service-account*.json
 
+# Defense in depth: Google's default downloaded-key filename is just
+# `<project-name>-<random-hex>.json` (e.g. covenas-dashboard-9667242e0af3.json)
+# and doesn't match any pattern above. Block *any* .json sitting at repo
+# root — nested dirs (lambda/, frontend/, infra/) are unaffected, and none
+# of our tooling expects a root-level .json anyway.
+/*.json
+
 # Frontend build output (if a build step gets introduced later)
 frontend/dist/
 frontend/node_modules/
@@ -42,3 +49,4 @@ __pycache__/
 
 # OS cruft
 .DS_Store
+.envrc
