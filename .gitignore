@@ -1,0 +1,44 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+!example.tfvars
+.terraform.lock.hcl.bak
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Lambda build/package output
+lambda/package/
+lambda/*.zip
+infra/build/
+
+# Credential-looking files - never commit real keys.
+# (Deliberately pattern-based, not a blanket `*.json`, so ordinary config/
+# manifest JSON the frontend may need later isn't swept up by accident.)
+*service-account*.json
+*serviceaccount*.json
+*credentials*.json
+*-key.json
+*_key.json
+sa.json
+sa.local.json
+*.local.json
+google-service-account*.json
+
+# Frontend build output (if a build step gets introduced later)
+frontend/dist/
+frontend/node_modules/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS cruft
+.DS_Store

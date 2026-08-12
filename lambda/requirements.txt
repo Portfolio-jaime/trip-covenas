@@ -1,0 +1,18 @@
+# Kept intentionally minimal so the deployment package can be zipped
+# without a Lambda layer (see infra/README.md "Why no Lambda layer").
+#
+# - google-auth: JWT/service-account signing + OAuth token refresh against
+#   Google's token endpoint. We do NOT use google-api-python-client (it
+#   pulls in googleapis-common-protos, google-api-core, protobuf, httplib2,
+#   uritemplate...) - we call the Sheets API v4 REST endpoint directly.
+# - requests: HTTP transport, used both by google-auth's
+#   `google.auth.transport.requests.Request` and by our direct calls to
+#   the Sheets API.
+#
+# boto3 is intentionally NOT listed here: it's provided for free by the
+# AWS Lambda Python 3.12 runtime. It's only needed locally if you run the
+# handler's `if __name__ == "__main__"` smoke test against SSM directly
+# (the smoke test as written reads a local key file instead, so it doesn't
+# need boto3 either).
+google-auth>=2.29,<3
+requests>=2.31,<3
