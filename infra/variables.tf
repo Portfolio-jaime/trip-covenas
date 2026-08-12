@@ -62,6 +62,12 @@ variable "cloudfront_price_class" {
   default     = "PriceClass_100"
 }
 
+variable "budget_alert_email" {
+  description = "Email that receives the cost-guardrail budget alert."
+  type        = string
+  default     = "arheanja@gmail.com"
+}
+
 variable "github_repo" {
   description = "GitHub \"owner/repo\" allowed to assume the CI Terraform role via OIDC."
   type        = string
