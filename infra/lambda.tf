@@ -6,11 +6,14 @@
 # with the `archive` provider. Rebuilds only when handler.py or
 # requirements.txt actually change (see `triggers`).
 #
-# All dependencies here (google-auth, requests, and their transitive deps
-# cachetools/pyasn1/pyasn1-modules/rsa/six/charset-normalizer/idna/urllib3/
-# certifi) are pure-Python - no compiled C extensions - so a plain `pip
-# install -t` on any platform produces a package that also runs fine on
-# Lambda's Amazon Linux runtime. No Lambda layer is needed for this.
+# google-auth pulls in `cryptography` (a compiled, Rust-backed extension)
+# for JWT signing - it is NOT pure-Python despite the rest of the
+# dependency tree being so. Installing it with a plain `pip install -t` on
+# a dev machine grabs that machine's platform wheel (e.g. macOS/arm64),
+# which fails on Lambda's Amazon Linux runtime with
+# `invalid ELF header`. `--platform manylinux2014_x86_64 --only-binary=:all:`
+# forces pip to fetch the Linux x86_64 wheel regardless of host OS,
+# matching this function's (default) x86_64 architecture.
 resource "null_resource" "lambda_build" {
   triggers = {
     requirements_hash = filemd5("${path.module}/../lambda/requirements.txt")
@@ -24,6 +27,10 @@ resource "null_resource" "lambda_build" {
       rm -rf "${path.module}/build/package"
       mkdir -p "${path.module}/build/package"
       pip3 install --no-cache-dir --quiet \
+        --platform manylinux2014_x86_64 \
+        --implementation cp \
+        --python-version 3.12 \
+        --only-binary=:all: \
         -r "${path.module}/../lambda/requirements.txt" \
         -t "${path.module}/build/package"
       cp "${path.module}/../lambda/handler.py" "${path.module}/build/package/handler.py"

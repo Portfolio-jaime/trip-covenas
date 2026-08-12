@@ -190,8 +190,18 @@ def _parse_rows(
         return []
     results = []
     for row in values[header_idx + 1 :]:
-        if _cell(row, colmap, required_col) is None:
+        cell_value = _cell(row, colmap, required_col)
+        if cell_value is None:
             continue  # skip blank/unused pre-allocated rows
+        # Every one of these sheets ends with a "Total X:" / "TOTAL X:"
+        # summary row (Personas' "Total noches-persona:", Abonos' "TOTAL
+        # ABONADO:", Gastos' "TOTAL GASTOS:") whose label sits in this same
+        # required column, so it isn't blank and slips past the check
+        # above. Without filtering it out, its own already-summed value
+        # gets folded into the sum *again* one level up (e.g.
+        # total_noches_persona, total_gastos), silently doubling it.
+        if str(cell_value).strip().lower().startswith("total"):
+            continue
         results.append(row_factory(row, colmap))
     return results
 
@@ -256,6 +266,9 @@ def parse_personas(values: list[list[Any]]) -> list[dict]:
             "nota": str(_cell(row, colmap, COL_NOTA, "") or "").strip(),
         }
 
+    # The sheet's "Total noches-persona:" summary row is filtered out
+    # generically by _parse_rows (see its "total"-prefix check) since its
+    # label sits in this same Nombre column.
     return _parse_rows(values, COL_NOMBRE, row_factory)
 
 
