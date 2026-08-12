@@ -35,19 +35,33 @@ assuming any commands or architecture exist.
 - A read-only visual dashboard has been published as a Claude Artifact (not part of this repo) —
   it's a manual snapshot, regenerated on request, not live-connected to the sheet.
 
-## Planned: AWS live dashboard
+## AWS live dashboard — deployed
 
-Design decided but not yet implemented:
+**Live**: https://d3v68ejd8s9g4n.cloudfront.net/ (frontend) · reads
+`https://rbzg7ddzyh.execute-api.us-east-1.amazonaws.com/api/summary` (Lambda-backed API).
 
-- **Data flow**: Google Sheets stays the source of truth (family edits there). A Lambda reads it
-  read-only via a Google **Service Account** (not a public "anyone with the link" share) and
-  serves JSON through an API Gateway HTTP API. A static frontend (S3 + CloudFront) fetches that
-  JSON and renders the same dashboard design used in the Artifact version.
-- **IaC**: Terraform.
-- **Cost target**: effectively $0/month — stay inside Lambda/API Gateway/CloudFront's always-free
-  tiers; no Route53 custom domain (use the default `*.cloudfront.net` URL) to avoid the $0.50/mo
-  hosted-zone charge.
-- **Auth**: none — read-only, unguessable CloudFront URL, same threat model already accepted for
-  the Artifact link shared over WhatsApp.
-- Once this exists, replace this section with real build/deploy/test commands and the actual
-  architecture (Terraform module layout, Lambda entry point, frontend build step).
+- **Data flow**: Google Sheets is the source of truth (family edits there — the native Sheets file,
+  not the `.xlsx`; Sheets API rejects files still in Office-compat mode). `lambda/handler.py` reads
+  it read-only via a Google **Service Account** (`covenas-dashboard-reader@covenas-dashboard.iam.gserviceaccount.com`,
+  key in SSM at `/covenas-dashboard/google-service-account`), replicates the workbook's per-night
+  proration + group-balance logic server-side, and returns JSON. `frontend/index.html` fetches that
+  JSON (endpoint configured in `frontend/config.js`) and renders it — same visual design as the
+  original Claude Artifact dashboard.
+- **IaC**: Terraform in `infra/`, state in S3 (`taxops11-tfstate-786567028012`, key
+  `trip-covenas/terraform.tfstate` — reuses TaxOps-11's bootstrap bucket with its own key prefix,
+  no shared lock).
+- **AWS account**: personal (786567028012), profile `trip-covenas` (SSO, same `sso-session` as
+  TaxOps-11's `taxops-admin`). **GitHub**: personal account `jaimehenao8126`, not the work account
+  — see `.envrc` (direnv auto-loads `AWS_PROFILE` + `GH_CONFIG_DIR` on `cd`).
+- **CI/CD**: `.github/workflows/terraform-plan.yml` (PRs touching `infra/`, `lambda/`, or
+  `frontend/`) and `terraform-apply.yml` (push to `main` or manual dispatch, gated behind the
+  `production` environment's required reviewer). Auth via GitHub OIDC — no AWS keys stored in
+  GitHub; IAM role `covenas-dashboard-github-actions-terraform` reuses the OIDC *provider* TaxOps-11
+  already created in this account, scoped to its own trust policy for `Portfolio-jaime/trip-covenas`
+  only.
+- **Known gotchas already hit once** (don't redo this debugging): (1) `google-auth`'s `cryptography`
+  dependency is a compiled extension — the Lambda build step (`infra/lambda.tf`) must `pip install
+  --platform manylinux2014_x86_64 --only-binary=:all:` or the zip contains a macOS binary that fails
+  on Lambda with "invalid ELF header". (2) Every sheet tab has a trailing "Total X:" summary row in
+  the same lookup column as real data rows — `_parse_rows` in `handler.py` filters anything starting
+  with "total" to avoid double-counting it as phantom data.
