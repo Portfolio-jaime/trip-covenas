@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Personal project (not yet a git repo) to track shared expenses for a family trip to Coveñas,
-Colombia, and to give the family a way to see the numbers without opening a spreadsheet. There is
-no application code yet — see "Current state" and "Planned: AWS live dashboard" below before
-assuming any commands or architecture exist.
+Personal project (git repo, `Portfolio-jaime/trip-covenas` on GitHub) to track shared expenses for
+a family trip to Coveñas, Colombia, and to give the family a way to see the numbers without opening
+a spreadsheet. See "Current state" and "AWS live dashboard — deployed" below for what actually
+exists before assuming commands or architecture.
 
 ## Trip facts (source of truth — don't re-derive from chat exports)
 
@@ -65,3 +65,9 @@ assuming any commands or architecture exist.
   on Lambda with "invalid ELF header". (2) Every sheet tab has a trailing "Total X:" summary row in
   the same lookup column as real data rows — `_parse_rows` in `handler.py` filters anything starting
   with "total" to avoid double-counting it as phantom data.
+- **Tagging**: every AWS resource must be tagged — already handled globally via `default_tags` in
+  `infra/providers.tf` (`Project`, `Environment`, `ManagedBy=terraform`, `Repository`, `Owner`), so
+  a plain resource block picks it up automatically. If a new resource type doesn't support
+  `default_tags` propagation (rare, but e.g. some `aws_s3_object`-adjacent or non-taggable
+  resources), add an explicit `tags = { ... }` block matching that same set by hand — don't create
+  an AWS resource without a tag path back to this project.
