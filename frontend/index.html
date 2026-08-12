@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coveñas 2026 — Cuentas del viaje</title>
+<style>
+  :root {
+    --bg: #F2F6F4;
+    --surface: #FFFFFF;
+    --surface-2: #E9F0ED;
+    --ink: #10262B;
+    --ink-soft: #4C6A67;
+    --line: #DCE6E1;
+    --ocean: #0E5C63;
+    --ocean-strong: #0A454A;
+    --coral: #E8734A;
+    --sea-green: #2F9C6B;
+    --sea-green-bg: #E4F4EC;
+    --sunset-red: #C24B3F;
+    --sunset-red-bg: #FBEAE7;
+    --amber: #B8863A;
+    --amber-bg: #FBF1E1;
+    --shadow: 0 1px 2px rgba(16,38,43,0.06), 0 8px 24px -12px rgba(16,38,43,0.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0B1B1E; --surface: #122A2E; --surface-2: #17343A; --ink: #E7F1EE;
+      --ink-soft: #93B2AE; --line: #21393E; --ocean: #4FB8AE; --ocean-strong: #7ED2C8;
+      --coral: #F0925F; --sea-green: #4FD08A; --sea-green-bg: #123227;
+      --sunset-red: #E8877A; --sunset-red-bg: #341E1C; --amber: #E0B15C; --amber-bg: #332A16;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0B1B1E; --surface: #122A2E; --surface-2: #17343A; --ink: #E7F1EE;
+    --ink-soft: #93B2AE; --line: #21393E; --ocean: #4FB8AE; --ocean-strong: #7ED2C8;
+    --coral: #F0925F; --sea-green: #4FD08A; --sea-green-bg: #123227;
+    --sunset-red: #E8877A; --sunset-red-bg: #341E1C; --amber: #E0B15C; --amber-bg: #332A16;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+  :root[data-theme="light"] {
+    --bg: #F2F6F4; --surface: #FFFFFF; --surface-2: #E9F0ED; --ink: #10262B;
+    --ink-soft: #4C6A67; --line: #DCE6E1; --ocean: #0E5C63; --ocean-strong: #0A454A;
+    --coral: #E8734A; --sea-green: #2F9C6B; --sea-green-bg: #E4F4EC;
+    --sunset-red: #C24B3F; --sunset-red-bg: #FBEAE7; --amber: #B8863A; --amber-bg: #FBF1E1;
+    --shadow: 0 1px 2px rgba(16,38,43,0.06), 0 8px 24px -12px rgba(16,38,43,0.18);
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  body { padding: 0 0 64px; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 20px; }
+  .hero { background: linear-gradient(165deg, var(--ocean) 0%, var(--ocean-strong) 100%);
+    color: #F4FAF8; padding: 32px 20px 40px; position: relative; overflow: hidden; }
+  .hero::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 28px;
+    background: var(--bg);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 28' preserveAspectRatio='none'%3E%3Cpath d='M0 14 C 15 26, 30 2, 45 14 S 75 26, 90 14 S 105 2, 120 14 V28 H0 Z'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 28' preserveAspectRatio='none'%3E%3Cpath d='M0 14 C 15 26, 30 2, 45 14 S 75 26, 90 14 S 105 2, 120 14 V28 H0 Z'/%3E%3C/svg%3E");
+    -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
+  .hero-inner { max-width: 720px; margin: 0 auto; position: relative; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; color: #BFE3DC;
+    font-weight: 600; margin: 0 0 6px; }
+  h1.trip-title { font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif; font-weight: 400;
+    font-size: clamp(30px, 7vw, 40px); line-height: 1.08; margin: 0 0 10px; text-wrap: balance; }
+  .dates { font-size: 15px; color: #D7EDE8; margin: 0 0 22px; }
+  .dates b { color: #FFFFFF; font-variant-numeric: tabular-nums; }
+  .countdown { display: flex; align-items: baseline; gap: 10px; background: rgba(255,255,255,0.09);
+    border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; padding: 14px 16px; width: fit-content; }
+  .countdown .num { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; color: #FFFFFF; }
+  .countdown .label { font-size: 13px; color: #BFE3DC; }
+  .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: -20px;
+    position: relative; z-index: 1; }
+  @media (min-width: 560px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+  .stat-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 14px 14px 16px; box-shadow: var(--shadow); }
+  .stat-card .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft);
+    font-weight: 600; margin: 0 0 6px; }
+  .stat-card .v { font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 0;
+    letter-spacing: -0.01em; }
+  .stat-card .v.coral { color: var(--coral); }
+  .stat-card .v.ocean { color: var(--ocean); }
+  section { margin-top: 40px; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    margin-bottom: 14px; }
+  h2 { font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif; font-weight: 400; font-size: 21px;
+    margin: 0; }
+  .section-note { font-size: 12.5px; color: var(--ink-soft); margin: 0; }
+  .balance-list { display: flex; flex-direction: column; gap: 10px; }
+  .b-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .b-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .b-name { font-weight: 700; font-size: 15px; }
+  .b-sub { font-size: 12.5px; color: var(--ink-soft); font-weight: 400; }
+  .pill { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+  .pill.debe { background: var(--sunset-red-bg); color: var(--sunset-red); }
+  .pill.aldia { background: var(--sea-green-bg); color: var(--sea-green); }
+  .pill.pendiente { background: var(--amber-bg); color: var(--amber); }
+  .b-bar-row { display: flex; align-items: center; gap: 10px; }
+  .b-bar { flex: 1; height: 7px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .b-bar-fill { height: 100%; border-radius: 999px; background: var(--sea-green); }
+  .b-figs { font-size: 12.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .b-figs b { color: var(--ink); font-weight: 600; }
+  .gasto-row { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0;
+    border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .gasto-row:last-child { border-bottom: none; }
+  .gasto-main { display: flex; flex-direction: column; gap: 2px; }
+  .gasto-cat { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); }
+  .gasto-val { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  .empty-state, .error-state { background: var(--surface); border: 1px dashed var(--line); border-radius: 14px;
+    padding: 22px 18px; text-align: center; color: var(--ink-soft); font-size: 14px; line-height: 1.5; }
+  .error-state { border-color: var(--sunset-red); color: var(--sunset-red); }
+  .notes { background: var(--surface-2); border-radius: 14px; padding: 16px 18px; font-size: 13.5px;
+    color: var(--ink-soft); line-height: 1.6; }
+  .notes b { color: var(--ink); }
+  footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12px;
+    color: var(--ink-soft); text-align: center; }
+  .skeleton { background: linear-gradient(90deg, var(--surface-2) 25%, var(--line) 37%, var(--surface-2) 63%);
+    background-size: 400% 100%; border-radius: 14px; height: 64px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .b-bar-fill { transition: width 0.5s ease; }
+    .skeleton { animation: shimmer 1.4s ease infinite; }
+  }
+  @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <p class="eyebrow">Viaje familiar</p>
+    <h1 class="trip-title">Coveñas 2026–27</h1>
+    <p class="dates" id="dates-line">Cargando fechas…</p>
+    <div class="countdown">
+      <span class="num" id="countdown-num">—</span>
+      <span class="label" id="countdown-label">días para el viaje</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="stats" id="stats">
+    <div class="stat-card"><p class="k">Costo total viaje</p><p class="v" id="stat-total">—</p></div>
+    <div class="stat-card"><p class="k">Recaudado</p><p class="v ocean" id="stat-abonado">—</p></div>
+    <div class="stat-card"><p class="k">Falta por recaudar</p><p class="v coral" id="stat-pendiente">—</p></div>
+    <div class="stat-card"><p class="k">Por persona (6 noches)</p><p class="v" id="stat-persona">—</p></div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <h2>Balance por grupo</h2>
+      <p class="section-note">Detalle por persona en la hoja de cálculo</p>
+    </div>
+    <div class="balance-list" id="balance-list">
+      <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Últimos gastos</h2>
+      <p class="section-note">Categoría · valor</p>
+    </div>
+    <div id="gastos-list"><div class="skeleton"></div></div>
+  </section>
+
+  <section>
+    <div class="notes">
+      <b>Para tener en cuenta</b><br>
+      Fecha límite de pago de la cabaña: <b>por confirmar</b> con la propietaria.
+      Julián entraría después del 31 si el trabajo se lo permite — su parte se suma aparte una vez confirme.
+      El costo por persona se prorratea por noches reales, no es parejo si alguien llega o se va distinto.
+    </div>
+  </section>
+
+  <footer id="footer-note">
+    Cargando…
+  </footer>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  var API_URL = window.DASHBOARD_API_URL;
+
+  function fmt(n) {
+    return "$" + Math.round(n).toLocaleString("es-CO");
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return "";
+    var d = new Date(iso + "T00:00:00");
+    return d.toLocaleDateString("es-CO", { day: "numeric", month: "short" });
+  }
+
+  function renderCountdown(inicioISO) {
+    var tripStart = new Date(inicioISO + "T00:00:00");
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var diffDays = Math.round((tripStart - today) / 86400000);
+    var numEl = document.getElementById("countdown-num");
+    var labelEl = document.getElementById("countdown-label");
+    if (diffDays > 0) {
+      numEl.textContent = diffDays;
+      labelEl.textContent = "días para el viaje";
+    } else if (diffDays === 0) {
+      numEl.textContent = "🏖";
+      labelEl.textContent = "¡Es hoy!";
+    } else {
+      numEl.textContent = "🌊";
+      labelEl.textContent = "buen viaje";
+    }
+  }
+
+  function renderGroups(grupos) {
+    var list = document.getElementById("balance-list");
+    list.innerHTML = "";
+    grupos.forEach(function (g) {
+      var pct = g.owed > 0 ? Math.max(0, Math.min(100, (g.paid / g.owed) * 100)) : 0;
+      var balance = g.paid - g.owed;
+      var pillClass, pillText;
+      if (g.pending) {
+        pillClass = "pendiente"; pillText = "Pendiente confirmar";
+      } else if (balance >= 0) {
+        pillClass = "aldia"; pillText = "Al día";
+      } else {
+        pillClass = "debe"; pillText = "Debe " + fmt(-balance);
+      }
+      var card = document.createElement("div");
+      card.className = "b-card";
+      card.innerHTML =
+        '<div class="b-top">' +
+          '<div><span class="b-name">' + g.nombre + '</span> &nbsp;<span class="b-sub">' + g.sub + '</span></div>' +
+          '<span class="pill ' + pillClass + '">' + pillText + '</span>' +
+        '</div>' +
+        '<div class="b-bar-row">' +
+          '<div class="b-bar"><div class="b-bar-fill" style="width:' + pct + '%"></div></div>' +
+          '<span class="b-figs"><b>' + fmt(g.paid) + '</b> / ' + fmt(g.owed) + '</span>' +
+        '</div>';
+      list.appendChild(card);
+    });
+  }
+
+  function renderGastos(gastos) {
+    var el = document.getElementById("gastos-list");
+    if (!gastos || gastos.length === 0) {
+      el.innerHTML = '<div class="empty-state">Aún no se han registrado gastos de comida, ' +
+        'transporte o paseos.<br>Se van sumando aquí a medida que se registran en la hoja de gastos.</div>';
+      return;
+    }
+    el.innerHTML = "";
+    var box = document.createElement("div");
+    box.className = "b-card";
+    gastos.forEach(function (g) {
+      var row = document.createElement("div");
+      row.className = "gasto-row";
+      row.innerHTML =
+        '<div class="gasto-main"><span>' + g.descripcion + ' — ' + g.quienPago + '</span>' +
+        '<span class="gasto-cat">' + g.categoria + ' · ' + fmtDate(g.fecha) + '</span></div>' +
+        '<span class="gasto-val">' + fmt(g.valor) + '</span>';
+      box.appendChild(row);
+    });
+    el.appendChild(box);
+  }
+
+  function render(data) {
+    document.getElementById("dates-line").innerHTML =
+      data.cabaña.condominio + " · <b>" + fmtDate(data.cabaña.inicio) + "</b> &rarr; <b>" +
+      fmtDate(data.cabaña.fin) + "</b> · " + data.cabaña.noches + " noches";
+    renderCountdown(data.cabaña.inicio);
+    document.getElementById("stat-total").textContent = fmt(data.totales.granTotal);
+    document.getElementById("stat-abonado").textContent = fmt(data.totales.abonado);
+    document.getElementById("stat-pendiente").textContent = fmt(data.totales.pendienteRecaudar);
+    var personaCount = (data.grupos || []).filter(function (g) { return !g.pending; })
+      .reduce(function (n) { return n + 1; }, 0) || 1;
+    document.getElementById("stat-persona").textContent = fmt(data.totales.granTotal / (data.personas || personaCount));
+    renderGroups(data.grupos || []);
+    renderGastos(data.ultimosGastos || []);
+    var updated = data.actualizado ? new Date(data.actualizado).toLocaleString("es-CO") : "—";
+    document.getElementById("footer-note").textContent = "Datos en vivo desde la hoja de cálculo · actualizado " + updated;
+  }
+
+  function showError() {
+    document.getElementById("balance-list").innerHTML =
+      '<div class="error-state">No se pudo cargar la información en vivo. Intenta recargar en un momento, ' +
+      'o revisa la hoja de cálculo directamente.</div>';
+    document.getElementById("gastos-list").innerHTML = "";
+    document.getElementById("footer-note").textContent = "Sin conexión con los datos en vivo.";
+  }
+
+  if (!API_URL || API_URL.indexOf("REPLACE") === 0) {
+    showError();
+    document.getElementById("footer-note").textContent =
+      "config.js no está configurado todavía (falta el API URL de Terraform).";
+    return;
+  }
+
+  fetch(API_URL)
+    .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(render)
+    .catch(showError);
+})();
+</script>
+</body>
+</html>
