@@ -55,6 +55,12 @@ RANGE_CABANA = "Cabaña!A1:C20"
 RANGE_PERSONAS = "Personas!A1:F60"
 RANGE_ABONOS = "Abonos!A1:F500"
 RANGE_GASTOS = "Gastos!A1:F1000"
+# Estimado and Tesla are free-form (sections of label/value pairs mixed
+# with the odd table), not clean header+rows tables like the four above -
+# they're read raw and rendered generically by the frontend rather than
+# modeled here. See `_trim_grid`.
+RANGE_ESTIMADO = "Estimado!A1:F40"
+RANGE_TESLA = "Tesla!A1:D50"
 
 # Header names as they appear in the workbook, normalized (lowercase,
 # accents stripped). Used to locate columns by name instead of by letter.
@@ -68,6 +74,7 @@ COL_VALOR = "valor"
 COL_QUIEN_PAGO = "quien pago"
 COL_CATEGORIA = "categoria"
 COL_DESCRIPCION = "descripcion"
+COL_PARTICIPA = "participa gastos variables (si/no)"
 
 # Generic keywords used to flag a group as "pending/unconfirmed". Matched,
 # accent- and case-insensitively, against the group's raw label (from the
@@ -253,16 +260,21 @@ def parse_cabana(values: list[list[Any]]) -> dict:
         "fin": d_fin.isoformat() if d_fin else None,
         "noches": noches,
         "costoTotal": _to_money_int(label_map.get("costo total cabana")),
+        "costoPorNoche": _to_money_int(label_map.get("costo por noche (base 12 pers.)")),
+        "fechaLimitePago": str(label_map.get("fecha limite de pago") or "").strip(),
         "condominio": _extract_condominio(str(label_map.get("estado") or "")),
+        "linkReserva": str(label_map.get("link reserva (airbnb)") or "").strip(),
     }
 
 
 def parse_personas(values: list[list[Any]]) -> list[dict]:
     def row_factory(row, colmap):
+        participa_raw = _normalize(_cell(row, colmap, COL_PARTICIPA, ""))
         return {
             "nombre": str(_cell(row, colmap, COL_NOMBRE, "")).strip(),
             "grupo": str(_cell(row, colmap, COL_GRUPO, "")).strip(),
             "noches": _to_number(_cell(row, colmap, COL_NOCHES, 0)),
+            "participaGastos": participa_raw == "si",
             "nota": str(_cell(row, colmap, COL_NOTA, "") or "").strip(),
         }
 
@@ -270,6 +282,25 @@ def parse_personas(values: list[list[Any]]) -> list[dict]:
     # generically by _parse_rows (see its "total"-prefix check) since its
     # label sits in this same Nombre column.
     return _parse_rows(values, COL_NOMBRE, row_factory)
+
+
+def _trim_grid(values: list[list[Any]]) -> list[list[Any]]:
+    """Estimado and Tesla are free-form sheets (section headings, label/
+    value pairs, and the odd table, not one clean table) - rather than
+    hand-model their exact layout here, this just drops fully-blank rows
+    and any trailing blank columns, and lets the frontend classify each
+    row by its shape (1 cell -> heading, 2 -> label/value line, 3+ ->
+    table). Cell values pass through as-is (numbers stay numbers - the
+    frontend formats them)."""
+    out = []
+    for row in values or []:
+        trimmed = list(row)
+        while trimmed and trimmed[-1] in (None, ""):
+            trimmed.pop()
+        if not trimmed:
+            continue
+        out.append(trimmed)
+    return out
 
 
 def parse_abonos(values: list[list[Any]]) -> list[dict]:
@@ -334,6 +365,8 @@ def build_summary(
     personas_values: list[list[Any]],
     abonos_values: list[list[Any]],
     gastos_values: list[list[Any]],
+    estimado_values: list[list[Any]] | None = None,
+    tesla_values: list[list[Any]] | None = None,
     gastos_recent_limit: int = 10,
 ) -> dict:
     cabana = parse_cabana(cabana_values)
@@ -351,6 +384,38 @@ def build_summary(
     gran_total = cabana["costoTotal"] + total_gastos
     pendiente_recaudar = gran_total - total_abonado
 
+    # Variable-expense (Gastos) share: split evenly across whoever is
+    # marked as participating, mirroring the workbook's Balance sheet
+    # (`=IF(participa,totalGastos/COUNTIF(participa="Sí"),0)`).
+    participantes = [p for p in personas if p["participaGastos"]]
+    gasto_share = total_gastos / len(participantes) if participantes else 0.0
+
+    def _abonado_por(nombre: str) -> float:
+        return sum(a["valor"] for a in abonos if _names_match(a["nombre"], nombre))
+
+    # Per-person detail - the full "Personas" tab, individually granular
+    # (unlike `grupos` below, which rolls this up per family group).
+    personas_out = []
+    for p in personas:
+        costo_cabana = p["noches"] * rate_per_person_night
+        costo_gastos = gasto_share if p["participaGastos"] else 0.0
+        total_a_cargo = costo_cabana + costo_gastos
+        abonado = _abonado_por(p["nombre"])
+        personas_out.append(
+            {
+                "nombre": p["nombre"],
+                "grupo": _derive_group_display_name(p["grupo"], [p]),
+                "noches": p["noches"],
+                "participaGastos": p["participaGastos"],
+                "nota": p["nota"],
+                "costoCabana": _to_money_int(costo_cabana),
+                "costoGastos": _to_money_int(costo_gastos),
+                "totalACargo": _to_money_int(total_a_cargo),
+                "totalAbonado": _to_money_int(abonado),
+                "saldo": _to_money_int(abonado - total_a_cargo),
+            }
+        )
+
     # Group people by their raw `Grupo familiar` label, preserving the
     # order groups first appear in the Personas sheet.
     groups: dict[str, list[dict]] = {}
@@ -360,7 +425,11 @@ def build_summary(
     grupos_out = []
     for raw_group, members in groups.items():
         noches_grupo = sum(m["noches"] for m in members)
-        owed = sum(m["noches"] * rate_per_person_night for m in members)
+        owed = sum(
+            m["noches"] * rate_per_person_night
+            + (gasto_share if m["participaGastos"] else 0.0)
+            for m in members
+        )
         member_names = {m["nombre"] for m in members}
         paid = sum(
             a["valor"]
@@ -377,12 +446,28 @@ def build_summary(
             }
         )
 
+    abonos_sorted = sorted(
+        (a for a in abonos if a["fecha"] is not None),
+        key=lambda a: _serial_to_date(a["fecha"]) or date.min,
+        reverse=True,
+    )
+    abonos_out = [
+        {
+            "fecha": _date_iso(a["fecha"]),
+            "nombre": a["nombre"],
+            "grupo": _derive_group_display_name(a["grupo"], []) or a["grupo"],
+            "concepto": a["concepto"],
+            "valor": _to_money_int(a["valor"]),
+        }
+        for a in abonos_sorted
+    ]
+
     gastos_sorted = sorted(
         (g for g in gastos if g["fecha"] is not None),
         key=lambda g: _serial_to_date(g["fecha"]) or date.min,
         reverse=True,
     )
-    ultimos_gastos = [
+    gastos_out = [
         {
             "fecha": _date_iso(g["fecha"]),
             "quienPago": g["quienPago"],
@@ -390,7 +475,7 @@ def build_summary(
             "descripcion": g["descripcion"],
             "valor": _to_money_int(g["valor"]),
         }
-        for g in gastos_sorted[:gastos_recent_limit]
+        for g in gastos_sorted
     ]
 
     return {
@@ -402,7 +487,12 @@ def build_summary(
             "pendienteRecaudar": _to_money_int(pendiente_recaudar),
         },
         "grupos": grupos_out,
-        "ultimosGastos": ultimos_gastos,
+        "personas": personas_out,
+        "abonos": abonos_out,
+        "gastos": gastos_out,
+        "ultimosGastos": gastos_out[:gastos_recent_limit],
+        "estimado": {"grid": _trim_grid(estimado_values or [])},
+        "tesla": {"grid": _trim_grid(tesla_values or [])},
         "actualizado": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -443,7 +533,14 @@ def fetch_sheet_values(spreadsheet_id: str, access_token: str) -> dict[str, list
     """Single batchGet call for all the ranges we need. Returns
     {range_name: 2D values list}.
     """
-    ranges = [RANGE_CABANA, RANGE_PERSONAS, RANGE_ABONOS, RANGE_GASTOS]
+    ranges = [
+        RANGE_CABANA,
+        RANGE_PERSONAS,
+        RANGE_ABONOS,
+        RANGE_GASTOS,
+        RANGE_ESTIMADO,
+        RANGE_TESLA,
+    ]
     resp = requests.get(
         f"{SHEETS_API_BASE}/{spreadsheet_id}/values:batchGet",
         headers={"Authorization": f"Bearer {access_token}"},
@@ -475,6 +572,8 @@ def fetch_sheet_values(spreadsheet_id: str, access_token: str) -> dict[str, list
         "personas": _lookup(RANGE_PERSONAS),
         "abonos": _lookup(RANGE_ABONOS),
         "gastos": _lookup(RANGE_GASTOS),
+        "estimado": _lookup(RANGE_ESTIMADO),
+        "tesla": _lookup(RANGE_TESLA),
     }
 
 
@@ -504,6 +603,8 @@ def lambda_handler(event: dict, context: Any) -> dict:
             sheets["personas"],
             sheets["abonos"],
             sheets["gastos"],
+            estimado_values=sheets["estimado"],
+            tesla_values=sheets["tesla"],
             gastos_recent_limit=recent_limit,
         )
 
@@ -555,6 +656,11 @@ if __name__ == "__main__":
     _token = _get_access_token(_cached_service_account_info)
     _sheets = fetch_sheet_values(spreadsheet_id, _token)
     _summary = build_summary(
-        _sheets["cabana"], _sheets["personas"], _sheets["abonos"], _sheets["gastos"]
+        _sheets["cabana"],
+        _sheets["personas"],
+        _sheets["abonos"],
+        _sheets["gastos"],
+        estimado_values=_sheets["estimado"],
+        tesla_values=_sheets["tesla"],
     )
     print(json.dumps(_summary, indent=2, ensure_ascii=False))

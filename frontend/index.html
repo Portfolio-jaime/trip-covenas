@@ -51,25 +51,46 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased; overflow-x: hidden; }
   body { padding: 0 0 64px; }
-  .wrap { max-width: 720px; margin: 0 auto; padding: 0 20px; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 20px; }
+  a { color: inherit; }
+
+  /* ---------- Hero ---------- */
   .hero { background: linear-gradient(165deg, var(--ocean) 0%, var(--ocean-strong) 100%);
-    color: #F4FAF8; padding: 32px 20px 40px; position: relative; overflow: hidden; }
+    color: #F4FAF8; padding: 32px 20px 0; position: relative; overflow: hidden; }
   .hero::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 28px;
     background: var(--bg);
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 28' preserveAspectRatio='none'%3E%3Cpath d='M0 14 C 15 26, 30 2, 45 14 S 75 26, 90 14 S 105 2, 120 14 V28 H0 Z'/%3E%3C/svg%3E");
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 28' preserveAspectRatio='none'%3E%3Cpath d='M0 14 C 15 26, 30 2, 45 14 S 75 26, 90 14 S 105 2, 120 14 V28 H0 Z'/%3E%3C/svg%3E");
-    -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
-  .hero-inner { max-width: 720px; margin: 0 auto; position: relative; }
+    -webkit-mask-size: 100% 100%; mask-size: 100% 100%; z-index: 0; }
+  .hero-inner { max-width: 780px; margin: 0 auto; position: relative; z-index: 1; padding-bottom: 40px; }
   .eyebrow { font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; color: #BFE3DC;
     font-weight: 600; margin: 0 0 6px; }
   h1.trip-title { font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif; font-weight: 400;
-    font-size: clamp(30px, 7vw, 40px); line-height: 1.08; margin: 0 0 10px; text-wrap: balance; }
+    font-size: clamp(28px, 6.5vw, 38px); line-height: 1.08; margin: 0 0 10px; text-wrap: balance; }
   .dates { font-size: 15px; color: #D7EDE8; margin: 0 0 22px; }
   .dates b { color: #FFFFFF; font-variant-numeric: tabular-nums; }
   .countdown { display: flex; align-items: baseline; gap: 10px; background: rgba(255,255,255,0.09);
     border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; padding: 14px 16px; width: fit-content; }
-  .countdown .num { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; color: #FFFFFF; }
+  .countdown .num { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; color: #FFFFFF; }
   .countdown .label { font-size: 13px; color: #BFE3DC; }
+
+  /* ---------- Tabs ---------- */
+  .tabbar-outer { position: sticky; top: 0; z-index: 10; background: var(--bg);
+    border-bottom: 1px solid var(--line); box-shadow: var(--shadow); }
+  .tabbar { max-width: 780px; margin: 0 auto; display: flex; gap: 4px; overflow-x: auto;
+    padding: 8px 20px; scrollbar-width: none; }
+  .tabbar::-webkit-scrollbar { display: none; }
+  .tab-btn { flex: 0 0 auto; border: none; background: transparent; color: var(--ink-soft);
+    font-size: 13.5px; font-weight: 600; padding: 8px 14px; border-radius: 999px; cursor: pointer;
+    white-space: nowrap; font-family: inherit; }
+  .tab-btn:hover { background: var(--surface-2); }
+  .tab-btn[aria-selected="true"] { background: var(--ocean); color: #F4FAF8; }
+  .tab-btn:focus-visible { outline: 2px solid var(--ocean); outline-offset: 2px; }
+
+  .tabpanel { display: none; padding-top: 28px; }
+  .tabpanel.active { display: block; }
+
+  /* ---------- Stats ---------- */
   .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: -20px;
     position: relative; z-index: 1; }
   @media (min-width: 560px) { .stats { grid-template-columns: repeat(4, 1fr); } }
@@ -77,16 +98,21 @@
     padding: 14px 14px 16px; box-shadow: var(--shadow); }
   .stat-card .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft);
     font-weight: 600; margin: 0 0 6px; }
-  .stat-card .v { font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 0;
+  .stat-card .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 0;
     letter-spacing: -0.01em; }
   .stat-card .v.coral { color: var(--coral); }
   .stat-card .v.ocean { color: var(--ocean); }
-  section { margin-top: 40px; }
+
+  /* ---------- Sections ---------- */
+  section.block { margin-top: 36px; }
+  section.block:first-child { margin-top: 0; }
   .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
     margin-bottom: 14px; }
-  h2 { font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif; font-weight: 400; font-size: 21px;
+  h2 { font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif; font-weight: 400; font-size: 20px;
     margin: 0; }
   .section-note { font-size: 12.5px; color: var(--ink-soft); margin: 0; }
+
+  /* ---------- Balance / person cards ---------- */
   .balance-list { display: flex; flex-direction: column; gap: 10px; }
   .b-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
   .b-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
@@ -101,22 +127,45 @@
   .b-bar-fill { height: 100%; border-radius: 999px; background: var(--sea-green); }
   .b-figs { font-size: 12.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .b-figs b { color: var(--ink); font-weight: 600; }
-  .gasto-row { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0;
+
+  /* ---------- Ledger rows (Gastos/Abonos) ---------- */
+  .ledger { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .ledger-row { display: flex; justify-content: space-between; gap: 10px; padding: 12px 16px;
     border-bottom: 1px solid var(--line); font-size: 13.5px; }
-  .gasto-row:last-child { border-bottom: none; }
-  .gasto-main { display: flex; flex-direction: column; gap: 2px; }
-  .gasto-cat { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); }
-  .gasto-val { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  .ledger-row:last-child { border-bottom: none; }
+  .ledger-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .ledger-main span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ledger-meta { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); }
+  .ledger-val { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; flex: 0 0 auto; }
+
   .empty-state, .error-state { background: var(--surface); border: 1px dashed var(--line); border-radius: 14px;
     padding: 22px 18px; text-align: center; color: var(--ink-soft); font-size: 14px; line-height: 1.5; }
   .error-state { border-color: var(--sunset-red); color: var(--sunset-red); }
+
   .notes { background: var(--surface-2); border-radius: 14px; padding: 16px 18px; font-size: 13.5px;
     color: var(--ink-soft); line-height: 1.6; }
   .notes b { color: var(--ink); }
+
+  /* ---------- Freeform grid (Estimado / Tesla) ---------- */
+  .grid-heading { font-weight: 700; font-size: 14px; margin: 20px 0 10px; color: var(--ink); }
+  .grid-heading:first-child { margin-top: 0; }
+  .grid-note { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 16px; line-height: 1.5; }
+  .grid-kv { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0;
+    border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .grid-kv:last-child { border-bottom: none; }
+  .grid-kv-label { color: var(--ink-soft); }
+  .grid-kv-value { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+  .grid-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; margin: 6px 0 16px; }
+  table.grid-table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); }
+  table.grid-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--ink-soft); background: var(--surface-2); padding: 10px 12px; white-space: nowrap; }
+  table.grid-table td { padding: 10px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+
   footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12px;
     color: var(--ink-soft); text-align: center; }
+
   .skeleton { background: linear-gradient(90deg, var(--surface-2) 25%, var(--line) 37%, var(--surface-2) 63%);
-    background-size: 400% 100%; border-radius: 14px; height: 64px; }
+    background-size: 400% 100%; border-radius: 14px; height: 64px; margin-bottom: 10px; }
   @media (prefers-reduced-motion: no-preference) {
     .b-bar-fill { transition: width 0.5s ease; }
     .skeleton { animation: shimmer 1.4s ease infinite; }
@@ -138,45 +187,112 @@
   </div>
 </div>
 
+<div class="tabbar-outer">
+  <nav class="tabbar" role="tablist" aria-label="Secciones del dashboard">
+    <button class="tab-btn" role="tab" data-tab="resumen" aria-selected="true">Resumen</button>
+    <button class="tab-btn" role="tab" data-tab="personas" aria-selected="false">Personas</button>
+    <button class="tab-btn" role="tab" data-tab="gastos" aria-selected="false">Gastos</button>
+    <button class="tab-btn" role="tab" data-tab="abonos" aria-selected="false">Abonos</button>
+    <button class="tab-btn" role="tab" data-tab="estimado" aria-selected="false">Estimado</button>
+    <button class="tab-btn" role="tab" data-tab="tesla" aria-selected="false">Tesla</button>
+  </nav>
+</div>
+
 <div class="wrap">
 
-  <div class="stats" id="stats">
-    <div class="stat-card"><p class="k">Costo total viaje</p><p class="v" id="stat-total">—</p></div>
-    <div class="stat-card"><p class="k">Recaudado</p><p class="v ocean" id="stat-abonado">—</p></div>
-    <div class="stat-card"><p class="k">Falta por recaudar</p><p class="v coral" id="stat-pendiente">—</p></div>
-    <div class="stat-card"><p class="k">Por persona (6 noches)</p><p class="v" id="stat-persona">—</p></div>
+  <!-- ---------------- RESUMEN ---------------- -->
+  <div class="tabpanel active" id="panel-resumen">
+    <div class="stats" id="stats">
+      <div class="stat-card"><p class="k">Costo total viaje</p><p class="v" id="stat-total">—</p></div>
+      <div class="stat-card"><p class="k">Recaudado</p><p class="v ocean" id="stat-abonado">—</p></div>
+      <div class="stat-card"><p class="k">Falta por recaudar</p><p class="v coral" id="stat-pendiente">—</p></div>
+      <div class="stat-card"><p class="k">Por persona (6 noches)</p><p class="v" id="stat-persona">—</p></div>
+    </div>
+
+    <section class="block">
+      <div class="section-head">
+        <h2>Balance por grupo</h2>
+        <p class="section-note">Detalle por persona en la pestaña "Personas"</p>
+      </div>
+      <div class="balance-list" id="balance-list">
+        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="section-head">
+        <h2>Últimos gastos</h2>
+        <p class="section-note">Ver todos en la pestaña "Gastos"</p>
+      </div>
+      <div id="resumen-gastos"><div class="skeleton"></div></div>
+    </section>
+
+    <section class="block">
+      <div class="notes">
+        <b>Para tener en cuenta</b><br>
+        Fecha límite de pago de la cabaña: <b id="nota-fecha-limite">—</b>.
+        Julián entraría después del 31 si el trabajo se lo permite — su parte se suma aparte una vez confirme.
+        El costo por persona se prorratea por noches reales, no es parejo si alguien llega o se va distinto.
+      </div>
+    </section>
   </div>
 
-  <section>
-    <div class="section-head">
-      <h2>Balance por grupo</h2>
-      <p class="section-note">Detalle por persona en la hoja de cálculo</p>
-    </div>
-    <div class="balance-list" id="balance-list">
-      <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
-    </div>
-  </section>
+  <!-- ---------------- PERSONAS ---------------- -->
+  <div class="tabpanel" id="panel-personas">
+    <section class="block">
+      <div class="section-head">
+        <h2>Personas</h2>
+        <p class="section-note">Costo individual, prorrateado por noche</p>
+      </div>
+      <div class="balance-list" id="personas-list"><div class="skeleton"></div></div>
+    </section>
+  </div>
 
-  <section>
-    <div class="section-head">
-      <h2>Últimos gastos</h2>
-      <p class="section-note">Categoría · valor</p>
-    </div>
-    <div id="gastos-list"><div class="skeleton"></div></div>
-  </section>
+  <!-- ---------------- GASTOS ---------------- -->
+  <div class="tabpanel" id="panel-gastos">
+    <section class="block">
+      <div class="section-head">
+        <h2>Gastos</h2>
+        <p class="section-note">Comida, transporte, actividades, otros</p>
+      </div>
+      <div id="gastos-full"><div class="skeleton"></div></div>
+    </section>
+  </div>
 
-  <section>
-    <div class="notes">
-      <b>Para tener en cuenta</b><br>
-      Fecha límite de pago de la cabaña: <b>por confirmar</b> con la propietaria.
-      Julián entraría después del 31 si el trabajo se lo permite — su parte se suma aparte una vez confirme.
-      El costo por persona se prorratea por noches reales, no es parejo si alguien llega o se va distinto.
-    </div>
-  </section>
+  <!-- ---------------- ABONOS ---------------- -->
+  <div class="tabpanel" id="panel-abonos">
+    <section class="block">
+      <div class="section-head">
+        <h2>Abonos / adelantos</h2>
+        <p class="section-note">Quién ha aportado a la caja del viaje</p>
+      </div>
+      <div id="abonos-full"><div class="skeleton"></div></div>
+    </section>
+  </div>
 
-  <footer id="footer-note">
-    Cargando…
-  </footer>
+  <!-- ---------------- ESTIMADO ---------------- -->
+  <div class="tabpanel" id="panel-estimado">
+    <section class="block">
+      <div class="section-head">
+        <h2>Presupuesto estimado</h2>
+        <p class="section-note">Predictivo — investigado en la web, ajustable</p>
+      </div>
+      <div id="estimado-grid"><div class="skeleton"></div></div>
+    </section>
+  </div>
+
+  <!-- ---------------- TESLA ---------------- -->
+  <div class="tabpanel" id="panel-tesla">
+    <section class="block">
+      <div class="section-head">
+        <h2>Tesla — ruta y carga</h2>
+        <p class="section-note">Medellín → Coveñas, Model Y RWD</p>
+      </div>
+      <div id="tesla-grid"><div class="skeleton"></div></div>
+    </section>
+  </div>
+
+  <footer id="footer-note">Cargando…</footer>
 </div>
 
 <script src="config.js"></script>
@@ -194,6 +310,19 @@
     return d.toLocaleDateString("es-CO", { day: "numeric", month: "short" });
   }
 
+  // ---------------- Tabs ----------------
+  var tabButtons = Array.prototype.slice.call(document.querySelectorAll(".tab-btn"));
+  tabButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      tabButtons.forEach(function (b) { b.setAttribute("aria-selected", "false"); });
+      document.querySelectorAll(".tabpanel").forEach(function (p) { p.classList.remove("active"); });
+      btn.setAttribute("aria-selected", "true");
+      document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+      window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+    });
+  });
+
+  // ---------------- Countdown ----------------
   function renderCountdown(inicioISO) {
     var tripStart = new Date(inicioISO + "T00:00:00");
     var today = new Date();
@@ -213,26 +342,26 @@
     }
   }
 
+  // ---------------- Resumen: balance por grupo ----------------
+  function balancePill(owed, paid, pending) {
+    var balance = paid - owed;
+    if (pending) return { cls: "pendiente", text: "Pendiente confirmar" };
+    if (balance >= 0) return { cls: "aldia", text: "Al día" };
+    return { cls: "debe", text: "Debe " + fmt(-balance) };
+  }
+
   function renderGroups(grupos) {
     var list = document.getElementById("balance-list");
     list.innerHTML = "";
     grupos.forEach(function (g) {
       var pct = g.owed > 0 ? Math.max(0, Math.min(100, (g.paid / g.owed) * 100)) : 0;
-      var balance = g.paid - g.owed;
-      var pillClass, pillText;
-      if (g.pending) {
-        pillClass = "pendiente"; pillText = "Pendiente confirmar";
-      } else if (balance >= 0) {
-        pillClass = "aldia"; pillText = "Al día";
-      } else {
-        pillClass = "debe"; pillText = "Debe " + fmt(-balance);
-      }
+      var pill = balancePill(g.owed, g.paid, g.pending);
       var card = document.createElement("div");
       card.className = "b-card";
       card.innerHTML =
         '<div class="b-top">' +
           '<div><span class="b-name">' + g.nombre + '</span> &nbsp;<span class="b-sub">' + g.sub + '</span></div>' +
-          '<span class="pill ' + pillClass + '">' + pillText + '</span>' +
+          '<span class="pill ' + pill.cls + '">' + pill.text + '</span>' +
         '</div>' +
         '<div class="b-bar-row">' +
           '<div class="b-bar"><div class="b-bar-fill" style="width:' + pct + '%"></div></div>' +
@@ -242,41 +371,167 @@
     });
   }
 
-  function renderGastos(gastos) {
-    var el = document.getElementById("gastos-list");
-    if (!gastos || gastos.length === 0) {
-      el.innerHTML = '<div class="empty-state">Aún no se han registrado gastos de comida, ' +
-        'transporte o paseos.<br>Se van sumando aquí a medida que se registran en la hoja de gastos.</div>';
+  // ---------------- Personas ----------------
+  function renderPersonas(personas) {
+    var list = document.getElementById("personas-list");
+    list.innerHTML = "";
+    if (!personas || personas.length === 0) {
+      list.innerHTML = '<div class="empty-state">Sin datos de personas todavía.</div>';
       return;
     }
-    el.innerHTML = "";
+    personas.forEach(function (p) {
+      var pct = p.totalACargo > 0 ? Math.max(0, Math.min(100, (p.totalAbonado / p.totalACargo) * 100)) : 0;
+      var pill = balancePill(p.totalACargo, p.totalAbonado, false);
+      var sub = p.grupo + " · " + p.noches + " noches" + (p.participaGastos ? "" : " · no participa en gastos variables");
+      var card = document.createElement("div");
+      card.className = "b-card";
+      card.innerHTML =
+        '<div class="b-top">' +
+          '<div><span class="b-name">' + p.nombre + '</span> &nbsp;<span class="b-sub">' + sub + '</span></div>' +
+          '<span class="pill ' + pill.cls + '">' + pill.text + '</span>' +
+        '</div>' +
+        '<div class="b-bar-row">' +
+          '<div class="b-bar"><div class="b-bar-fill" style="width:' + pct + '%"></div></div>' +
+          '<span class="b-figs"><b>' + fmt(p.totalAbonado) + '</b> / ' + fmt(p.totalACargo) + '</span>' +
+        '</div>' +
+        (p.nota ? '<p class="section-note" style="margin-top:8px">' + p.nota + '</p>' : '');
+      list.appendChild(card);
+    });
+  }
+
+  // ---------------- Ledgers: Gastos / Abonos ----------------
+  function renderLedger(containerId, rows, emptyText, rowRenderer) {
+    var el = document.getElementById(containerId);
+    if (!rows || rows.length === 0) {
+      el.innerHTML = '<div class="empty-state">' + emptyText + '</div>';
+      return;
+    }
     var box = document.createElement("div");
-    box.className = "b-card";
-    gastos.forEach(function (g) {
+    box.className = "ledger";
+    rows.forEach(function (r) {
       var row = document.createElement("div");
-      row.className = "gasto-row";
-      row.innerHTML =
-        '<div class="gasto-main"><span>' + g.descripcion + ' — ' + g.quienPago + '</span>' +
-        '<span class="gasto-cat">' + g.categoria + ' · ' + fmtDate(g.fecha) + '</span></div>' +
-        '<span class="gasto-val">' + fmt(g.valor) + '</span>';
+      row.className = "ledger-row";
+      row.innerHTML = rowRenderer(r);
       box.appendChild(row);
     });
+    el.innerHTML = "";
     el.appendChild(box);
   }
 
+  function gastoRowHtml(g) {
+    return '<div class="ledger-main"><span>' + (g.descripcion || "(sin descripción)") + " — " + g.quienPago + '</span>' +
+      '<span class="ledger-meta">' + g.categoria + ' · ' + fmtDate(g.fecha) + '</span></div>' +
+      '<span class="ledger-val">' + fmt(g.valor) + '</span>';
+  }
+
+  function abonoRowHtml(a) {
+    return '<div class="ledger-main"><span>' + a.nombre + " — " + a.concepto + '</span>' +
+      '<span class="ledger-meta">' + a.grupo + ' · ' + fmtDate(a.fecha) + '</span></div>' +
+      '<span class="ledger-val">' + fmt(a.valor) + '</span>';
+  }
+
+  // ---------------- Freeform grid renderer (Estimado / Tesla) ----------------
+  function renderFreeformGrid(containerId, grid) {
+    var container = document.getElementById(containerId);
+    container.innerHTML = "";
+    if (!grid || grid.length === 0) {
+      container.innerHTML = '<div class="empty-state">Sin datos.</div>';
+      return;
+    }
+    var currentTable = null;
+    grid.forEach(function (row, idx) {
+      if (idx === 0) return; // row 0 is the sheet's own emoji title, already shown as the tab heading
+      var cells = row.map(function (c) { return c === null || c === undefined ? "" : String(c); });
+      var nonEmpty = cells.filter(function (c) { return c.trim() !== ""; });
+
+      if (nonEmpty.length === 0) { currentTable = null; return; }
+
+      if (nonEmpty.length === 1) {
+        currentTable = null;
+        var text = nonEmpty[0];
+        var isLong = text.length > 70;
+        var el = document.createElement(isLong ? "p" : "div");
+        el.className = isLong ? "grid-note" : "grid-heading";
+        el.textContent = text;
+        container.appendChild(el);
+        return;
+      }
+
+      if (nonEmpty.length >= 3) {
+        if (!currentTable) {
+          var wrap = document.createElement("div");
+          wrap.className = "grid-table-wrap";
+          currentTable = document.createElement("table");
+          currentTable.className = "grid-table";
+          wrap.appendChild(currentTable);
+          container.appendChild(wrap);
+          var thead = document.createElement("thead");
+          var htr = document.createElement("tr");
+          cells.forEach(function (c) {
+            var th = document.createElement("th");
+            th.textContent = c;
+            htr.appendChild(th);
+          });
+          thead.appendChild(htr);
+          currentTable.appendChild(thead);
+          currentTable.appendChild(document.createElement("tbody"));
+        } else {
+          var tbody = currentTable.querySelector("tbody");
+          var tr = document.createElement("tr");
+          cells.forEach(function (c) {
+            var td = document.createElement("td");
+            td.textContent = c;
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        }
+        return;
+      }
+
+      // exactly 2 non-empty cells -> label/value line
+      currentTable = null;
+      var kv = document.createElement("div");
+      kv.className = "grid-kv";
+      var label = document.createElement("span");
+      label.className = "grid-kv-label";
+      label.textContent = cells[0];
+      var value = document.createElement("span");
+      value.className = "grid-kv-value";
+      value.textContent = cells.slice(1).filter(function (c) { return c.trim() !== ""; }).join(" · ");
+      kv.appendChild(label);
+      kv.appendChild(value);
+      container.appendChild(kv);
+    });
+  }
+
+  // ---------------- Assemble ----------------
   function render(data) {
     document.getElementById("dates-line").innerHTML =
       data.cabaña.condominio + " · <b>" + fmtDate(data.cabaña.inicio) + "</b> &rarr; <b>" +
       fmtDate(data.cabaña.fin) + "</b> · " + data.cabaña.noches + " noches";
     renderCountdown(data.cabaña.inicio);
+    document.getElementById("nota-fecha-limite").textContent = data.cabaña.fechaLimitePago || "por confirmar";
+
     document.getElementById("stat-total").textContent = fmt(data.totales.granTotal);
     document.getElementById("stat-abonado").textContent = fmt(data.totales.abonado);
     document.getElementById("stat-pendiente").textContent = fmt(data.totales.pendienteRecaudar);
-    var personaCount = (data.grupos || []).filter(function (g) { return !g.pending; })
-      .reduce(function (n) { return n + 1; }, 0) || 1;
-    document.getElementById("stat-persona").textContent = fmt(data.totales.granTotal / (data.personas || personaCount));
+    var basePersonas = (data.personas || []).length || 1;
+    document.getElementById("stat-persona").textContent = fmt(data.totales.granTotal / basePersonas);
+
     renderGroups(data.grupos || []);
-    renderGastos(data.ultimosGastos || []);
+    renderPersonas(data.personas || []);
+
+    renderLedger("resumen-gastos", (data.ultimosGastos || []).slice(0, 5),
+      "Aún no se han registrado gastos. Se van sumando aquí a medida que se registran en la hoja.",
+      gastoRowHtml);
+    renderLedger("gastos-full", data.gastos || [],
+      "Aún no se han registrado gastos.", gastoRowHtml);
+    renderLedger("abonos-full", data.abonos || [],
+      "Aún no se han registrado abonos.", abonoRowHtml);
+
+    renderFreeformGrid("estimado-grid", data.estimado && data.estimado.grid);
+    renderFreeformGrid("tesla-grid", data.tesla && data.tesla.grid);
+
     var updated = data.actualizado ? new Date(data.actualizado).toLocaleString("es-CO") : "—";
     document.getElementById("footer-note").textContent = "Datos en vivo desde la hoja de cálculo · actualizado " + updated;
   }
@@ -285,7 +540,6 @@
     document.getElementById("balance-list").innerHTML =
       '<div class="error-state">No se pudo cargar la información en vivo. Intenta recargar en un momento, ' +
       'o revisa la hoja de cálculo directamente.</div>';
-    document.getElementById("gastos-list").innerHTML = "";
     document.getElementById("footer-note").textContent = "Sin conexión con los datos en vivo.";
   }
 
