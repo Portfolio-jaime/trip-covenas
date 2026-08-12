@@ -28,12 +28,22 @@ exists before assuming commands or architecture.
 
 ## Current state
 
-- `Gastos_Covenas.xlsx` — the real, hand-maintained budget workbook (6 sheets: Resumen, Cabaña,
-  Personas, Abonos, Gastos, Balance, plus Estimado and Tesla for predictive/road-trip planning).
-  This is the source of truth for numbers; it gets uploaded to the family's Google Drive as a
-  Google Sheet so everyone can edit from their phone.
-- A read-only visual dashboard has been published as a Claude Artifact (not part of this repo) —
-  it's a manual snapshot, regenerated on request, not live-connected to the sheet.
+- **The live Google Sheet is the only source of truth for data** — sheet ID
+  `1KmnxmzLnohSPLx6PYSJ3WWulrdm1R53pA7Qx85xEnJk`, shared with the family for editing and with
+  `covenas-dashboard-reader@covenas-dashboard.iam.gserviceaccount.com` (Viewer) for the Lambda.
+  **All data changes (new abonos, gastos, tweaked supuestos, etc.) happen directly in that Sheet
+  from now on** — not in the local file below, and not by asking Claude to regenerate anything.
+- `Gastos_Covenas.xlsx` (repo root) is a **historical snapshot only** — it's what the live Sheet
+  was converted from, kept here as a readable reference/backup of the original formulas and
+  layout. It has already drifted from the live Sheet (e.g. real abonos added there aren't reflected
+  here) and editing it does **not** propagate anywhere. If a new tab needs to exist in the live
+  Sheet (like `Carros` was, and `Tesla`'s rewrite is), the practical path is: build/update it in
+  this local file first (so the layout is documented and versioned), then the user copies that one
+  tab into the live Sheet themselves (right-click the tab → Copy to → Existing spreadsheet) —
+  Claude has no write access to the live Sheet (the service account is deliberately read-only).
+- A read-only visual dashboard was also published as a Claude Artifact early on (not part of this
+  repo, superseded by the AWS dashboard below) — a manual snapshot, regenerated on request, not
+  live-connected to the sheet.
 
 ## AWS live dashboard — deployed
 
