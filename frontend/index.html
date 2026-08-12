@@ -195,6 +195,7 @@
     <button class="tab-btn" role="tab" data-tab="abonos" aria-selected="false">Abonos</button>
     <button class="tab-btn" role="tab" data-tab="estimado" aria-selected="false">Estimado</button>
     <button class="tab-btn" role="tab" data-tab="tesla" aria-selected="false">Tesla</button>
+    <button class="tab-btn" role="tab" data-tab="carros" aria-selected="false">Carros</button>
   </nav>
 </div>
 
@@ -289,6 +290,17 @@
         <p class="section-note">Medellín → Coveñas, Model Y RWD</p>
       </div>
       <div id="tesla-grid"><div class="skeleton"></div></div>
+    </section>
+  </div>
+
+  <!-- ---------------- CARROS ---------------- -->
+  <div class="tabpanel" id="panel-carros">
+    <section class="block">
+      <div class="section-head">
+        <h2>Carros a gasolina</h2>
+        <p class="section-note">Ruta, presupuesto y checklist — Medellín → Coveñas</p>
+      </div>
+      <div id="carros-grid"><div class="skeleton"></div></div>
     </section>
   </div>
 
@@ -435,7 +447,7 @@
     var container = document.getElementById(containerId);
     container.innerHTML = "";
     if (!grid || grid.length === 0) {
-      container.innerHTML = '<div class="empty-state">Sin datos.</div>';
+      container.innerHTML = '<div class="empty-state">Todavía no se ha agregado esta pestaña a la hoja de cálculo compartida.</div>';
       return;
     }
     var currentTable = null;
@@ -531,6 +543,7 @@
 
     renderFreeformGrid("estimado-grid", data.estimado && data.estimado.grid);
     renderFreeformGrid("tesla-grid", data.tesla && data.tesla.grid);
+    renderFreeformGrid("carros-grid", data.carros && data.carros.grid);
 
     var updated = data.actualizado ? new Date(data.actualizado).toLocaleString("es-CO") : "—";
     document.getElementById("footer-note").textContent = "Datos en vivo desde la hoja de cálculo · actualizado " + updated;

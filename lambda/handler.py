@@ -61,6 +61,7 @@ RANGE_GASTOS = "Gastos!A1:F1000"
 # modeled here. See `_trim_grid`.
 RANGE_ESTIMADO = "Estimado!A1:F40"
 RANGE_TESLA = "Tesla!A1:D50"
+RANGE_CARROS = "Carros!A1:D40"
 
 # Header names as they appear in the workbook, normalized (lowercase,
 # accents stripped). Used to locate columns by name instead of by letter.
@@ -367,6 +368,7 @@ def build_summary(
     gastos_values: list[list[Any]],
     estimado_values: list[list[Any]] | None = None,
     tesla_values: list[list[Any]] | None = None,
+    carros_values: list[list[Any]] | None = None,
     gastos_recent_limit: int = 10,
 ) -> dict:
     cabana = parse_cabana(cabana_values)
@@ -493,6 +495,7 @@ def build_summary(
         "ultimosGastos": gastos_out[:gastos_recent_limit],
         "estimado": {"grid": _trim_grid(estimado_values or [])},
         "tesla": {"grid": _trim_grid(tesla_values or [])},
+        "carros": {"grid": _trim_grid(carros_values or [])},
         "actualizado": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -529,27 +532,44 @@ def _get_access_token(sa_info: dict) -> str:
     return _cached_credentials.token
 
 
+# Tabs the workbook is guaranteed to have - if any of these is missing,
+# something is genuinely wrong and the request should fail loudly.
+_REQUIRED_RANGES = [RANGE_CABANA, RANGE_PERSONAS, RANGE_ABONOS, RANGE_GASTOS]
+
+# Newer/free-form tabs that may not exist in every copy of the sheet yet
+# (e.g. `Carros` was added here before the user has copied that tab into
+# their live Google Sheet). Missing one of these must degrade to an empty
+# grid for just that tab, not break the whole dashboard - see the
+# individual per-range fetch below instead of lumping these into the
+# batchGet with the required ranges.
+_OPTIONAL_RANGES = {
+    "estimado": RANGE_ESTIMADO,
+    "tesla": RANGE_TESLA,
+    "carros": RANGE_CARROS,
+}
+
+
+def _sheets_get(url: str, access_token: str, params: dict) -> requests.Response:
+    return requests.get(
+        url, headers={"Authorization": f"Bearer {access_token}"}, params=params, timeout=10
+    )
+
+
 def fetch_sheet_values(spreadsheet_id: str, access_token: str) -> dict[str, list[list[Any]]]:
-    """Single batchGet call for all the ranges we need. Returns
-    {range_name: 2D values list}.
+    """Batch-fetches the required tabs (must all exist), then fetches each
+    optional tab individually so a not-yet-added tab (e.g. a new `Carros`
+    sheet not yet copied into someone's live spreadsheet) degrades to an
+    empty grid instead of 400-ing the entire request.
     """
-    ranges = [
-        RANGE_CABANA,
-        RANGE_PERSONAS,
-        RANGE_ABONOS,
-        RANGE_GASTOS,
-        RANGE_ESTIMADO,
-        RANGE_TESLA,
-    ]
-    resp = requests.get(
+    render_params = {
+        "valueRenderOption": "UNFORMATTED_VALUE",
+        "dateTimeRenderOption": "SERIAL_NUMBER",
+    }
+
+    resp = _sheets_get(
         f"{SHEETS_API_BASE}/{spreadsheet_id}/values:batchGet",
-        headers={"Authorization": f"Bearer {access_token}"},
-        params={
-            "ranges": ranges,
-            "valueRenderOption": "UNFORMATTED_VALUE",
-            "dateTimeRenderOption": "SERIAL_NUMBER",
-        },
-        timeout=10,
+        access_token,
+        {"ranges": _REQUIRED_RANGES, **render_params},
     )
     resp.raise_for_status()
     payload = resp.json()
@@ -567,14 +587,27 @@ def fetch_sheet_values(spreadsheet_id: str, access_token: str) -> dict[str, list
                 return v
         return []
 
-    return {
+    result = {
         "cabana": _lookup(RANGE_CABANA),
         "personas": _lookup(RANGE_PERSONAS),
         "abonos": _lookup(RANGE_ABONOS),
         "gastos": _lookup(RANGE_GASTOS),
-        "estimado": _lookup(RANGE_ESTIMADO),
-        "tesla": _lookup(RANGE_TESLA),
     }
+
+    for key, range_name in _OPTIONAL_RANGES.items():
+        try:
+            r = _sheets_get(
+                f"{SHEETS_API_BASE}/{spreadsheet_id}/values/{range_name}",
+                access_token,
+                render_params,
+            )
+            r.raise_for_status()
+            result[key] = r.json().get("values", [])
+        except requests.exceptions.RequestException:
+            logger.info("Optional tab %r not available yet, showing empty", range_name)
+            result[key] = []
+
+    return result
 
 
 # --------------------------------------------------------------------------
@@ -605,6 +638,7 @@ def lambda_handler(event: dict, context: Any) -> dict:
             sheets["gastos"],
             estimado_values=sheets["estimado"],
             tesla_values=sheets["tesla"],
+            carros_values=sheets["carros"],
             gastos_recent_limit=recent_limit,
         )
 
@@ -662,5 +696,6 @@ if __name__ == "__main__":
         _sheets["gastos"],
         estimado_values=_sheets["estimado"],
         tesla_values=_sheets["tesla"],
+        carros_values=_sheets["carros"],
     )
     print(json.dumps(_summary, indent=2, ensure_ascii=False))
