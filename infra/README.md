@@ -4,8 +4,10 @@ Terraform for the AWS side of the live dashboard: S3 + CloudFront (static
 frontend), API Gateway HTTP API + Lambda (`GET /api/summary`, reads the
 Google Sheet). See the root `CLAUDE.md` for the overall architecture.
 
-Local state on purpose — see the comment at the top of `versions.tf` before
-asking "where's the backend config".
+State lives in S3 (`taxops11-tfstate-786567028012`, key `trip-covenas/terraform.tfstate`)
+— reuses the same personal-account bootstrap bucket as TaxOps-11, see the
+comment at the top of `versions.tf`. This is what lets CI run `terraform
+plan`/`apply` consistently instead of only ever working from one laptop.
 
 ## Prerequisites
 

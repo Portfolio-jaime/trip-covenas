@@ -16,26 +16,19 @@ terraform {
     }
   }
 
-  # --- State backend: local, on purpose ----------------------------------
-  # This is a single-person personal project: no team to coordinate state
-  # locking with, and standing up an S3 bucket + DynamoDB lock table just
-  # to hold one person's `terraform.tfstate` is pure overhead for the
-  # always-free-tier budget this project targets. Local state is a
-  # deliberate choice here, not an oversight.
-  #
-  # If this ever needs a remote backend (e.g. multiple contributors, or
-  # just wanting state backed up off one laptop), create a small S3 bucket
-  # (+ optionally a DynamoDB table for locking) out of band, then uncomment
-  # and fill in:
-  #
-  # backend "s3" {
-  #   bucket         = "your-tfstate-bucket"
-  #   key            = "covenas-dashboard/terraform.tfstate"
-  #   region         = "us-east-1"
-  #   dynamodb_table = "your-tfstate-lock-table"
-  #   encrypt        = true
-  # }
-  #
-  # ...then run `terraform init -migrate-state` to copy the existing local
-  # state into the new backend.
+  # --- State backend: S3, reusing the same account's existing bootstrap --
+  # `taxops11-tfstate-786567028012` is a versioned, encrypted, public-
+  # access-blocked bucket already standing in this same personal AWS
+  # account (786567028012) for the TaxOps-11 project. Rather than stand up
+  # a second bootstrap bucket for one more personal project, this reuses
+  # it with its own key prefix — no bucket-per-project needed.
+  # `use_lockfile` is Terraform 1.10+'s native S3 locking, so no DynamoDB
+  # table is needed either.
+  backend "s3" {
+    bucket       = "taxops11-tfstate-786567028012"
+    key          = "trip-covenas/terraform.tfstate"
+    region       = "us-east-1"
+    use_lockfile = true
+    encrypt      = true
+  }
 }
