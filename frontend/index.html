@@ -437,9 +437,29 @@
           '<div class="b-bar"><div class="b-bar-fill" style="width:' + pct + '%"></div></div>' +
           '<span class="b-figs"><b>' + fmt(p.totalAbonado) + '</b> / ' + fmt(p.totalACargo) + '</span>' +
         '</div>' +
-        (p.nota ? '<p class="section-note" style="margin-top:8px">' + p.nota + '</p>' : '');
+        (p.nota ? '<p class="section-note" style="margin-top:8px">' + p.nota + '</p>' : '') +
+        (extraFieldsText(p.extra) ? '<p class="section-note" style="margin-top:4px">' + extraFieldsText(p.extra) + '</p>' : '');
       list.appendChild(card);
     });
+  }
+
+  // ---------------- Extra fields (unknown new columns) ----------------
+  // Any column a family member adds to Personas/Abonos/Gastos that isn't
+  // one the Lambda already models shows up here generically - keeps a new
+  // column from silently disappearing, without needing a code change.
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function extraFieldsText(extra) {
+    if (!extra) return "";
+    var keys = Object.keys(extra);
+    if (keys.length === 0) return "";
+    return keys
+      .map(function (k) { return escapeHtml(k) + ": " + escapeHtml(extra[k]); })
+      .join(" · ");
   }
 
   // ---------------- Ledgers: Gastos / Abonos ----------------
@@ -462,14 +482,18 @@
   }
 
   function gastoRowHtml(g) {
+    var extraText = extraFieldsText(g.extra);
     return '<div class="ledger-main"><span>' + (g.descripcion || "(sin descripción)") + " — " + g.quienPago + '</span>' +
-      '<span class="ledger-meta">' + g.categoria + ' · ' + fmtDate(g.fecha) + '</span></div>' +
+      '<span class="ledger-meta">' + g.categoria + ' · ' + fmtDate(g.fecha) +
+      (extraText ? ' · ' + extraText : '') + '</span></div>' +
       '<span class="ledger-val">' + fmt(g.valor) + '</span>';
   }
 
   function abonoRowHtml(a) {
+    var extraText = extraFieldsText(a.extra);
     return '<div class="ledger-main"><span>' + a.nombre + " — " + a.concepto + '</span>' +
-      '<span class="ledger-meta">' + a.grupo + ' · ' + fmtDate(a.fecha) + '</span></div>' +
+      '<span class="ledger-meta">' + a.grupo + ' · ' + fmtDate(a.fecha) +
+      (extraText ? ' · ' + extraText : '') + '</span></div>' +
       '<span class="ledger-val">' + fmt(a.valor) + '</span>';
   }
 

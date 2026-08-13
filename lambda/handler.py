@@ -63,17 +63,23 @@ RANGE_GASTOS = "Gastos!A1:F1000"
 
 # Header names as they appear in the workbook, normalized (lowercase,
 # accents stripped). Used to locate columns by name instead of by letter.
-COL_NOMBRE = "nombre"
-COL_GRUPO = "grupo familiar"
-COL_NOCHES = "noches en cabana"
-COL_NOTA = "nota"
-COL_FECHA = "fecha"
-COL_CONCEPTO = "concepto"
-COL_VALOR = "valor"
-COL_QUIEN_PAGO = "quien pago"
-COL_CATEGORIA = "categoria"
-COL_DESCRIPCION = "descripcion"
-COL_PARTICIPA = "participa gastos variables (si/no)"
+# Each is a tuple of accepted synonyms, not just the exact current header -
+# a family member renaming "Valor" to "Monto" (a plausible rename, unlike
+# some random new name) keeps working instead of silently going blank.
+# This is a mitigation, not a guarantee: a rename to something not listed
+# here still isn't found - there's no way to auto-detect an arbitrary
+# rename without risking guessing the wrong column.
+COL_NOMBRE = ("nombre", "persona", "quien")
+COL_GRUPO = ("grupo familiar", "grupo")
+COL_NOCHES = ("noches en cabana", "noches")
+COL_NOTA = ("nota", "notas")
+COL_FECHA = ("fecha", "dia")  # "día" normalizes to "dia" already, no separate entry needed
+COL_CONCEPTO = ("concepto", "detalle")
+COL_VALOR = ("valor", "monto", "cantidad", "precio")
+COL_QUIEN_PAGO = ("quien pago", "pagador")
+COL_CATEGORIA = ("categoria", "tipo")
+COL_DESCRIPCION = ("descripcion", "detalle")
+COL_PARTICIPA = ("participa gastos variables (si/no)", "participa gastos variables", "participa")
 
 # Generic keywords used to flag a group as "pending/unconfirmed". Matched,
 # accent- and case-insensitively, against the group's raw label (from the
@@ -166,32 +172,63 @@ def _join_names_es(names: list[str]) -> str:
 # --------------------------------------------------------------------------
 
 
-def _find_header_row(values: list[list[Any]], required_col: str) -> tuple[int, dict[str, int]]:
-    """Find the first row containing `required_col` (normalized) and build
-    a {normalized_header: column_index} map from that row.
+_ColNames = str | tuple[str, ...]
 
-    Returns (-1, {}) if no such header row is found (e.g. empty/blank tab).
+
+def _find_header_row(
+    values: list[list[Any]], required_col: _ColNames
+) -> tuple[int, dict[str, int], list[Any]]:
+    """Find the first row containing `required_col` (normalized - accepts
+    either one name or a tuple of accepted synonyms) and build a
+    {normalized_header: column_index} map from that row, plus the row's
+    original (unnormalized) cell text for display purposes (see
+    `_extra_fields`).
+
+    Returns (-1, {}, []) if no such header row is found (e.g. empty/blank tab).
     """
+    candidates = (required_col,) if isinstance(required_col, str) else required_col
     for i, row in enumerate(values or []):
         norm_cells = [_normalize(c) for c in row]
-        if required_col in norm_cells:
+        if any(c in norm_cells for c in candidates):
             colmap = {c: idx for idx, c in enumerate(norm_cells) if c}
-            return i, colmap
-    return -1, {}
+            return i, colmap, row
+    return -1, {}, []
 
 
-def _cell(row: list[Any], colmap: dict[str, int], name: str, default: Any = None) -> Any:
-    idx = colmap.get(name)
+def _cell(row: list[Any], colmap: dict[str, int], name: _ColNames, default: Any = None) -> Any:
+    candidates = (name,) if isinstance(name, str) else name
+    idx = next((colmap[c] for c in candidates if c in colmap), None)
     if idx is None or idx >= len(row):
         return default
     val = row[idx]
     return val if val not in (None, "") else default
 
 
+def _extra_fields(
+    row: list[Any], colmap: dict[str, int], header_row: list[Any], known_cols: frozenset[str]
+) -> dict[str, Any]:
+    """Any column in this row that isn't one of `known_cols` (the aliases
+    this sheet's row_factory already reads) - captured generically, keyed
+    by the column's actual header text, so a brand-new column a family
+    member adds shows up in the dashboard automatically instead of being
+    silently dropped. Column order in the sheet is preserved."""
+    extra: dict[str, Any] = {}
+    for norm_header, idx in sorted(colmap.items(), key=lambda kv: kv[1]):
+        if norm_header in known_cols:
+            continue
+        if idx < len(row) and row[idx] not in (None, ""):
+            label = str(header_row[idx]) if idx < len(header_row) else norm_header
+            extra[label] = row[idx]
+    return extra
+
+
 def _parse_rows(
-    values: list[list[Any]], required_col: str, row_factory
+    values: list[list[Any]],
+    required_col: _ColNames,
+    row_factory,
+    known_cols: frozenset[str] = frozenset(),
 ) -> list[dict]:
-    header_idx, colmap = _find_header_row(values, required_col)
+    header_idx, colmap, header_row = _find_header_row(values, required_col)
     if header_idx == -1:
         return []
     results = []
@@ -208,8 +245,17 @@ def _parse_rows(
         # total_noches_persona, total_gastos), silently doubling it.
         if str(cell_value).strip().lower().startswith("total"):
             continue
-        results.append(row_factory(row, colmap))
+        item = row_factory(row, colmap)
+        item["extra"] = _extra_fields(row, colmap, header_row, known_cols)
+        results.append(item)
     return results
+
+
+def _flatten(*groups: _ColNames) -> frozenset[str]:
+    out: set[str] = set()
+    for g in groups:
+        out.update((g,) if isinstance(g, str) else g)
+    return frozenset(out)
 
 
 # --------------------------------------------------------------------------
@@ -280,7 +326,8 @@ def parse_personas(values: list[list[Any]]) -> list[dict]:
     # The sheet's "Total noches-persona:" summary row is filtered out
     # generically by _parse_rows (see its "total"-prefix check) since its
     # label sits in this same Nombre column.
-    return _parse_rows(values, COL_NOMBRE, row_factory)
+    known = _flatten(COL_NOMBRE, COL_GRUPO, COL_NOCHES, COL_PARTICIPA, COL_NOTA)
+    return _parse_rows(values, COL_NOMBRE, row_factory, known)
 
 
 def _trim_grid(values: list[list[Any]]) -> list[list[Any]]:
@@ -312,7 +359,8 @@ def parse_abonos(values: list[list[Any]]) -> list[dict]:
             "valor": _to_number(_cell(row, colmap, COL_VALOR, 0)),
         }
 
-    return _parse_rows(values, COL_FECHA, row_factory)
+    known = _flatten(COL_FECHA, COL_NOMBRE, COL_GRUPO, COL_CONCEPTO, COL_VALOR)
+    return _parse_rows(values, COL_FECHA, row_factory, known)
 
 
 def parse_gastos(values: list[list[Any]]) -> list[dict]:
@@ -325,7 +373,8 @@ def parse_gastos(values: list[list[Any]]) -> list[dict]:
             "valor": _to_number(_cell(row, colmap, COL_VALOR, 0)),
         }
 
-    return _parse_rows(values, COL_FECHA, row_factory)
+    known = _flatten(COL_FECHA, COL_QUIEN_PAGO, COL_CATEGORIA, COL_DESCRIPCION, COL_VALOR)
+    return _parse_rows(values, COL_FECHA, row_factory, known)
 
 
 # --------------------------------------------------------------------------
@@ -411,6 +460,7 @@ def build_summary(
                 "totalACargo": _to_money_int(total_a_cargo),
                 "totalAbonado": _to_money_int(abonado),
                 "saldo": _to_money_int(abonado - total_a_cargo),
+                "extra": p.get("extra", {}),
             }
         )
 
@@ -456,6 +506,7 @@ def build_summary(
             "grupo": _derive_group_display_name(a["grupo"], []) or a["grupo"],
             "concepto": a["concepto"],
             "valor": _to_money_int(a["valor"]),
+            "extra": a.get("extra", {}),
         }
         for a in abonos_sorted
     ]
@@ -472,6 +523,7 @@ def build_summary(
             "categoria": g["categoria"],
             "descripcion": g["descripcion"],
             "valor": _to_money_int(g["valor"]),
+            "extra": g.get("extra", {}),
         }
         for g in gastos_sorted
     ]
