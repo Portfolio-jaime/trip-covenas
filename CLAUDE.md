@@ -9,6 +9,15 @@ a family trip to Coveñas, Colombia, and to give the family a way to see the num
 a spreadsheet. See "Current state" and "AWS live dashboard — deployed" below for what actually
 exists before assuming commands or architecture.
 
+## Commit / PR signature
+
+Never add Claude/Anthropic attribution here — no `Co-Authored-By: Claude...` line, no
+"🤖 Generated with Claude Code" footer. End every commit message and PR body with:
+
+```
+Signed-off-by: Jaime Henao <arheanja@gmail.com>
+```
+
 ## Trip facts (source of truth — don't re-derive from chat exports)
 
 - **Where/when**: Condominio Victoria Real, cabaña #2, Coveñas (Sucre). 29 dic 2026 → 4 ene 2027,
