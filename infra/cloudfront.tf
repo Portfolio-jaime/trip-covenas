@@ -12,6 +12,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   default_root_object = "index.html"
   comment             = "${var.project_name} static dashboard"
   price_class         = var.cloudfront_price_class
+  aliases             = var.custom_domain != "" ? [var.custom_domain] : []
 
   origin {
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
@@ -54,10 +55,23 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
   }
 
-  # No custom domain -> default *.cloudfront.net cert, no ACM cert/Route53
-  # needed, no $0.50/mo hosted-zone charge.
-  viewer_certificate {
-    cloudfront_default_certificate = true
+  # With var.custom_domain set: use the validated ACM cert (see domain.tf)
+  # for that domain. Without it: fall back to the default *.cloudfront.net
+  # cert - no ACM cert/Route53 needed, no $0.50/mo hosted-zone charge.
+  dynamic "viewer_certificate" {
+    for_each = var.custom_domain != "" ? [1] : []
+    content {
+      acm_certificate_arn      = aws_acm_certificate_validation.dashboard[0].certificate_arn
+      ssl_support_method       = "sni-only"
+      minimum_protocol_version = "TLSv1.2_2021"
+    }
+  }
+
+  dynamic "viewer_certificate" {
+    for_each = var.custom_domain == "" ? [1] : []
+    content {
+      cloudfront_default_certificate = true
+    }
   }
 }
 

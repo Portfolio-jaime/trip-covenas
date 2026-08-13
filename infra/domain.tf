@@ -40,24 +40,19 @@ output "acm_validation_record" {
   } : null
 }
 
-# Phase 2 resource - commented out on purpose for the first apply. If
-# it's in the graph before the validation CNAME exists in Cloudflare,
-# `terraform apply` blocks (up to 10 min) waiting on it *before* printing
-# any outputs - a chicken-and-egg deadlock, since the CNAME's value only
-# comes from this same apply's output. Uncomment once that CNAME has
-# been added in Cloudflare and had a couple minutes to propagate.
-#
-# resource "aws_acm_certificate_validation" "dashboard" {
-#   count           = var.custom_domain != "" ? 1 : 0
-#   certificate_arn = aws_acm_certificate.dashboard[0].arn
-#   validation_record_fqdns = [
-#     one(aws_acm_certificate.dashboard[0].domain_validation_options).resource_record_name
-#   ]
-#
-#   timeouts {
-#     create = "10m"
-#   }
-# }
+# Phase 2: the validation CNAME resolves now (confirmed via dig), safe to
+# let this block until ACM sees it.
+resource "aws_acm_certificate_validation" "dashboard" {
+  count           = var.custom_domain != "" ? 1 : 0
+  certificate_arn = aws_acm_certificate.dashboard[0].arn
+  validation_record_fqdns = [
+    one(aws_acm_certificate.dashboard[0].domain_validation_options).resource_record_name
+  ]
+
+  timeouts {
+    create = "10m"
+  }
+}
 
 output "dashboard_cname_target" {
   description = "Once this shows a value, add covenas.taxopsapp.com as a CNAME (DNS only) in Cloudflare pointing at this."
