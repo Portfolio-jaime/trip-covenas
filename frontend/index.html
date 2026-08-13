@@ -193,9 +193,9 @@
     <button class="tab-btn" role="tab" data-tab="personas" aria-selected="false">Personas</button>
     <button class="tab-btn" role="tab" data-tab="gastos" aria-selected="false">Gastos</button>
     <button class="tab-btn" role="tab" data-tab="abonos" aria-selected="false">Abonos</button>
-    <button class="tab-btn" role="tab" data-tab="estimado" aria-selected="false">Estimado</button>
-    <button class="tab-btn" role="tab" data-tab="tesla" aria-selected="false">Tesla</button>
-    <button class="tab-btn" role="tab" data-tab="carros" aria-selected="false">Carros</button>
+    <!-- Estimado / Tesla / Carros / whatever else exists in the live Sheet
+         are NOT hardcoded here - renderExtraTabs() below adds one button
+         (and one panel, further down) per extra tab the API reports. -->
   </nav>
 </div>
 
@@ -271,38 +271,9 @@
     </section>
   </div>
 
-  <!-- ---------------- ESTIMADO ---------------- -->
-  <div class="tabpanel" id="panel-estimado">
-    <section class="block">
-      <div class="section-head">
-        <h2>Presupuesto estimado</h2>
-        <p class="section-note">Predictivo — investigado en la web, ajustable</p>
-      </div>
-      <div id="estimado-grid"><div class="skeleton"></div></div>
-    </section>
-  </div>
-
-  <!-- ---------------- TESLA ---------------- -->
-  <div class="tabpanel" id="panel-tesla">
-    <section class="block">
-      <div class="section-head">
-        <h2>Tesla — ruta y carga</h2>
-        <p class="section-note">Medellín → Coveñas, Model Y RWD</p>
-      </div>
-      <div id="tesla-grid"><div class="skeleton"></div></div>
-    </section>
-  </div>
-
-  <!-- ---------------- CARROS ---------------- -->
-  <div class="tabpanel" id="panel-carros">
-    <section class="block">
-      <div class="section-head">
-        <h2>Carros a gasolina</h2>
-        <p class="section-note">Ruta, presupuesto y checklist — Medellín → Coveñas</p>
-      </div>
-      <div id="carros-grid"><div class="skeleton"></div></div>
-    </section>
-  </div>
+  <!-- Extra tabs (Estimado, Tesla, Carros, whatever else exists in the
+       live Sheet) are inserted here by renderExtraTabs(), right before
+       the footer. -->
 
   <footer id="footer-note">Cargando…</footer>
 </div>
@@ -323,16 +294,76 @@
   }
 
   // ---------------- Tabs ----------------
-  var tabButtons = Array.prototype.slice.call(document.querySelectorAll(".tab-btn"));
-  tabButtons.forEach(function (btn) {
+  // wireTabClick is reused for both the static tabs below AND every
+  // dynamically-created "extra" tab (renderExtraTabs) - a tab created
+  // after page load needs the exact same click behavior as one that was
+  // always in the HTML.
+  function wireTabClick(btn) {
     btn.addEventListener("click", function () {
-      tabButtons.forEach(function (b) { b.setAttribute("aria-selected", "false"); });
+      document.querySelectorAll(".tab-btn").forEach(function (b) { b.setAttribute("aria-selected", "false"); });
       document.querySelectorAll(".tabpanel").forEach(function (p) { p.classList.remove("active"); });
       btn.setAttribute("aria-selected", "true");
       document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
       window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
     });
-  });
+  }
+  Array.prototype.slice.call(document.querySelectorAll(".tab-btn")).forEach(wireTabClick);
+
+  // ---------------- Extra tabs (dynamic) ----------------
+  // One tab per key in data.extra - whatever tabs actually exist in the
+  // live Sheet beyond the core ones, discovered fresh by the Lambda on
+  // every request. Adding/renaming/removing a tab in the Sheet changes
+  // what shows up here with no code change on either end.
+  function slugify(title) {
+    return title
+      .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "") || "tab";
+  }
+
+  function renderExtraTabs(extra) {
+    var tabbar = document.querySelector(".tabbar");
+    var wrap = document.querySelector(".wrap");
+    var footerEl = document.getElementById("footer-note");
+
+    Object.keys(extra).forEach(function (title) {
+      var key = slugify(title);
+      var gridId = key + "-grid";
+
+      if (!document.getElementById("panel-" + key)) {
+        var btn = document.createElement("button");
+        btn.className = "tab-btn";
+        btn.setAttribute("role", "tab");
+        btn.setAttribute("aria-selected", "false");
+        btn.dataset.tab = key;
+        btn.textContent = title;
+        tabbar.appendChild(btn);
+        wireTabClick(btn);
+
+        var panel = document.createElement("div");
+        panel.className = "tabpanel";
+        panel.id = "panel-" + key;
+
+        var section = document.createElement("section");
+        section.className = "block";
+        var head = document.createElement("div");
+        head.className = "section-head";
+        var h2 = document.createElement("h2");
+        h2.textContent = title;
+        head.appendChild(h2);
+        section.appendChild(head);
+        var gridDiv = document.createElement("div");
+        gridDiv.id = gridId;
+        section.appendChild(gridDiv);
+        panel.appendChild(section);
+
+        wrap.insertBefore(panel, footerEl);
+      }
+
+      renderFreeformGrid(gridId, extra[title] && extra[title].grid);
+    });
+  }
 
   // ---------------- Countdown ----------------
   function renderCountdown(inicioISO) {
@@ -541,9 +572,7 @@
     renderLedger("abonos-full", data.abonos || [],
       "Aún no se han registrado abonos.", abonoRowHtml);
 
-    renderFreeformGrid("estimado-grid", data.estimado && data.estimado.grid);
-    renderFreeformGrid("tesla-grid", data.tesla && data.tesla.grid);
-    renderFreeformGrid("carros-grid", data.carros && data.carros.grid);
+    renderExtraTabs(data.extra || {});
 
     var updated = data.actualizado ? new Date(data.actualizado).toLocaleString("es-CO") : "—";
     document.getElementById("footer-note").textContent = "Datos en vivo desde la hoja de cálculo · actualizado " + updated;

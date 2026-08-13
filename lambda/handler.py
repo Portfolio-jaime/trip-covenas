@@ -55,13 +55,11 @@ RANGE_CABANA = "Cabaña!A1:C20"
 RANGE_PERSONAS = "Personas!A1:F60"
 RANGE_ABONOS = "Abonos!A1:F500"
 RANGE_GASTOS = "Gastos!A1:F1000"
-# Estimado and Tesla are free-form (sections of label/value pairs mixed
-# with the odd table), not clean header+rows tables like the four above -
-# they're read raw and rendered generically by the frontend rather than
-# modeled here. See `_trim_grid`.
-RANGE_ESTIMADO = "Estimado!A1:F40"
-RANGE_TESLA = "Tesla!A1:D50"
-RANGE_CARROS = "Carros!A1:D40"
+# Every other tab (Estimado, Tesla, Carros, and whatever gets added later)
+# is free-form (sections of label/value pairs mixed with the odd table),
+# not a clean header+rows table like the four above - they're discovered
+# dynamically and read raw, rendered generically by the frontend rather
+# than modeled here. See `_list_extra_sheet_titles` and `_trim_grid`.
 
 # Header names as they appear in the workbook, normalized (lowercase,
 # accents stripped). Used to locate columns by name instead of by letter.
@@ -366,9 +364,7 @@ def build_summary(
     personas_values: list[list[Any]],
     abonos_values: list[list[Any]],
     gastos_values: list[list[Any]],
-    estimado_values: list[list[Any]] | None = None,
-    tesla_values: list[list[Any]] | None = None,
-    carros_values: list[list[Any]] | None = None,
+    extra_sheets: dict[str, list[list[Any]]] | None = None,
     gastos_recent_limit: int = 10,
 ) -> dict:
     cabana = parse_cabana(cabana_values)
@@ -493,9 +489,13 @@ def build_summary(
         "abonos": abonos_out,
         "gastos": gastos_out,
         "ultimosGastos": gastos_out[:gastos_recent_limit],
-        "estimado": {"grid": _trim_grid(estimado_values or [])},
-        "tesla": {"grid": _trim_grid(tesla_values or [])},
-        "carros": {"grid": _trim_grid(carros_values or [])},
+        # Keyed by the tab's actual title in the live Sheet, in tab order -
+        # the frontend builds one pestaña per key, so a new tab shows up
+        # here with no Lambda change and no frontend change either.
+        "extra": {
+            title: {"grid": _trim_grid(values)}
+            for title, values in (extra_sheets or {}).items()
+        },
         "actualizado": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -536,17 +536,18 @@ def _get_access_token(sa_info: dict) -> str:
 # something is genuinely wrong and the request should fail loudly.
 _REQUIRED_RANGES = [RANGE_CABANA, RANGE_PERSONAS, RANGE_ABONOS, RANGE_GASTOS]
 
-# Newer/free-form tabs that may not exist in every copy of the sheet yet
-# (e.g. `Carros` was added here before the user has copied that tab into
-# their live Google Sheet). Missing one of these must degrade to an empty
-# grid for just that tab, not break the whole dashboard - see the
-# individual per-range fetch below instead of lumping these into the
-# batchGet with the required ranges.
-_OPTIONAL_RANGES = {
-    "estimado": RANGE_ESTIMADO,
-    "tesla": RANGE_TESLA,
-    "carros": RANGE_CARROS,
-}
+# Tabs that are either specially modeled above (Cabaña/Personas/Abonos/
+# Gastos) or redundant to show as a raw grid (Resumen and Balance are
+# formula-heavy views of the same data the dashboard's own Resumen/
+# Personas tabs already compute) - excluded from the dynamic "extra tabs"
+# discovery below. Normalized (accent/case-insensitive) so "Cabaña" and
+# "CABAÑA" both match.
+_CORE_SHEET_TITLES = {"cabana", "personas", "abonos", "gastos", "resumen", "balance"}
+
+# How wide/tall a freeform "extra" tab is read - generous on purpose since
+# these are open-ended reference sheets (Tesla, Carros, Estimado, and
+# whatever gets added next), not a tight data table.
+_EXTRA_TAB_RANGE_SUFFIX = "!A1:H200"
 
 
 def _sheets_get(url: str, access_token: str, params: dict) -> requests.Response:
@@ -555,11 +556,38 @@ def _sheets_get(url: str, access_token: str, params: dict) -> requests.Response:
     )
 
 
-def fetch_sheet_values(spreadsheet_id: str, access_token: str) -> dict[str, list[list[Any]]]:
-    """Batch-fetches the required tabs (must all exist), then fetches each
-    optional tab individually so a not-yet-added tab (e.g. a new `Carros`
-    sheet not yet copied into someone's live spreadsheet) degrades to an
-    empty grid instead of 400-ing the entire request.
+def _quote_sheet_title(title: str) -> str:
+    """Sheets range syntax needs single-quoting for tab names containing
+    spaces/special characters (e.g. `'Viajes y Rutas'!A1:H200`); plain
+    single-word names work either way, so quoting unconditionally is safe."""
+    return "'" + title.replace("'", "''") + "'"
+
+
+def _list_extra_sheet_titles(spreadsheet_id: str, access_token: str) -> list[str]:
+    """Every tab in the live spreadsheet that isn't one of the core,
+    specially-modeled ones - discovered fresh on every request, so a
+    brand-new tab (or one renamed/removed) shows up on the next page load
+    with no code change here. Returns titles in the sheet's own left-to-
+    right tab order (the API preserves that order)."""
+    resp = _sheets_get(
+        f"{SHEETS_API_BASE}/{spreadsheet_id}",
+        access_token,
+        {"fields": "sheets.properties.title"},
+    )
+    resp.raise_for_status()
+    all_titles = [
+        s["properties"]["title"] for s in resp.json().get("sheets", []) if "properties" in s
+    ]
+    return [t for t in all_titles if _normalize(t) not in _CORE_SHEET_TITLES]
+
+
+def fetch_sheet_values(spreadsheet_id: str, access_token: str) -> dict[str, Any]:
+    """Batch-fetches the required tabs (must all exist), then discovers and
+    fetches every other tab individually, so new/renamed/removed "extra"
+    tabs (Tesla, Carros, Estimado, or whatever gets added later) just work
+    without a code change. A tab that fails to fetch (e.g. a transient API
+    hiccup) degrades to an empty grid for just that tab, not a broken
+    dashboard.
     """
     render_params = {
         "valueRenderOption": "UNFORMATTED_VALUE",
@@ -587,26 +615,35 @@ def fetch_sheet_values(spreadsheet_id: str, access_token: str) -> dict[str, list
                 return v
         return []
 
-    result = {
+    result: dict[str, Any] = {
         "cabana": _lookup(RANGE_CABANA),
         "personas": _lookup(RANGE_PERSONAS),
         "abonos": _lookup(RANGE_ABONOS),
         "gastos": _lookup(RANGE_GASTOS),
     }
 
-    for key, range_name in _OPTIONAL_RANGES.items():
+    extra: dict[str, list[list[Any]]] = {}
+    try:
+        extra_titles = _list_extra_sheet_titles(spreadsheet_id, access_token)
+    except requests.exceptions.RequestException:
+        logger.info("Could not list sheet tabs; showing no extra tabs this request")
+        extra_titles = []
+
+    for title in extra_titles:
         try:
             r = _sheets_get(
-                f"{SHEETS_API_BASE}/{spreadsheet_id}/values/{range_name}",
+                f"{SHEETS_API_BASE}/{spreadsheet_id}/values/"
+                f"{_quote_sheet_title(title)}{_EXTRA_TAB_RANGE_SUFFIX}",
                 access_token,
                 render_params,
             )
             r.raise_for_status()
-            result[key] = r.json().get("values", [])
+            extra[title] = r.json().get("values", [])
         except requests.exceptions.RequestException:
-            logger.info("Optional tab %r not available yet, showing empty", range_name)
-            result[key] = []
+            logger.info("Extra tab %r failed to fetch, showing empty", title)
+            extra[title] = []
 
+    result["extra"] = extra
     return result
 
 
@@ -636,9 +673,7 @@ def lambda_handler(event: dict, context: Any) -> dict:
             sheets["personas"],
             sheets["abonos"],
             sheets["gastos"],
-            estimado_values=sheets["estimado"],
-            tesla_values=sheets["tesla"],
-            carros_values=sheets["carros"],
+            extra_sheets=sheets["extra"],
             gastos_recent_limit=recent_limit,
         )
 
@@ -694,8 +729,6 @@ if __name__ == "__main__":
         _sheets["personas"],
         _sheets["abonos"],
         _sheets["gastos"],
-        estimado_values=_sheets["estimado"],
-        tesla_values=_sheets["tesla"],
-        carros_values=_sheets["carros"],
+        extra_sheets=_sheets["extra"],
     )
     print(json.dumps(_summary, indent=2, ensure_ascii=False))
