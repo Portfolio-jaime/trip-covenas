@@ -56,8 +56,10 @@ Signed-off-by: Jaime Henao <arheanja@gmail.com>
 
 ## AWS live dashboard — deployed
 
-**Live**: https://d3v68ejd8s9g4n.cloudfront.net/ (frontend) · reads
-`https://rbzg7ddzyh.execute-api.us-east-1.amazonaws.com/api/summary` (Lambda-backed API).
+**Live**: https://covenas.taxopsapp.com/ (custom domain, DNS on Cloudflare — see `infra/domain.tf`;
+falls back to https://d3v68ejd8s9g4n.cloudfront.net/ directly if a network's DNS filters new
+domains) · reads `https://rbzg7ddzyh.execute-api.us-east-1.amazonaws.com/api/summary` (Lambda-backed
+API).
 
 - **Data flow**: Google Sheets is the source of truth (family edits there — the native Sheets file,
   not the `.xlsx`; Sheets API rejects files still in Office-compat mode). `lambda/handler.py` reads
@@ -90,3 +92,13 @@ Signed-off-by: Jaime Henao <arheanja@gmail.com>
   `default_tags` propagation (rare, but e.g. some `aws_s3_object`-adjacent or non-taggable
   resources), add an explicit `tags = { ... }` block matching that same set by hand — don't create
   an AWS resource without a tag path back to this project.
+- **This whole stack is temporary — teardown after the trip (~ene 2027)**: the guiding premise
+  since day one is "todo gratis", which also means not leaving infrastructure running once the
+  trip is over. When the user says it's time: `cd infra && terraform destroy` removes everything
+  Terraform manages (S3, CloudFront, Lambda, API Gateway, IAM role, ACM cert, budget). Two things
+  it does **not** own, clean up separately: (1) SSM parameter
+  `/covenas-dashboard/google-service-account` (`aws ssm delete-parameter`), (2) the two Cloudflare
+  DNS records for `covenas.taxopsapp.com` (manual, in the Cloudflare dashboard). Also revoke the
+  Google Service Account in GCP console. **Never delete the Google Sheet itself** as part of
+  cleanup — it's the family's actual trip data, everything else here is disposable scaffolding
+  around it.
