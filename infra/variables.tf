@@ -62,6 +62,12 @@ variable "cloudfront_price_class" {
   default     = "PriceClass_100"
 }
 
+variable "custom_domain" {
+  description = "Custom domain for the dashboard, served via CloudFront. DNS lives on Cloudflare (not Route53) - empty string disables the custom domain entirely."
+  type        = string
+  default     = "covenas.taxopsapp.com"
+}
+
 variable "budget_alert_email" {
   description = "Email that receives the cost-guardrail budget alert."
   type        = string
