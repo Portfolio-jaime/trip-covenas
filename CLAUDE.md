@@ -38,7 +38,7 @@ Signed-off-by: Jaime Henao <arheanja@gmail.com>
 ## Current state
 
 - **The live Google Sheet is the only source of truth for data** — sheet ID
-  `1KmnxmzLnohSPLx6PYSJ3WWulrdm1R53pA7Qx85xEnJk`, shared with the family for editing and with
+  `1_O7dvVOfmimSJ9SQXYdQhlKehdvbAoctdDvbOMo3g74`, shared with the family for editing and with
   `covenas-dashboard-reader@covenas-dashboard.iam.gserviceaccount.com` (Viewer) for the Lambda.
   **All data changes (new abonos, gastos, tweaked supuestos, etc.) happen directly in that Sheet
   from now on** — not in the local file below, and not by asking Claude to regenerate anything.

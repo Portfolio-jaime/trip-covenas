@@ -14,10 +14,11 @@ variable "google_spreadsheet_id" {
   description = <<-EOT
     The Google Sheet ID (the long id in its URL:
     https://docs.google.com/spreadsheets/d/<THIS_PART>/edit) for the live
-    Gastos_Covenas sheet. Required - has no default since it's specific to
-    your Google Drive.
+    Gastos_Covenas sheet. Defaults to the current live sheet - override with
+    -var only if pointing at a different copy (e.g. testing).
   EOT
   type        = string
+  default     = "1_O7dvVOfmimSJ9SQXYdQhlKehdvbAoctdDvbOMo3g74"
 }
 
 variable "google_service_account_ssm_param_name" {
