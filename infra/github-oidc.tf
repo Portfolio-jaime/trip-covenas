@@ -29,7 +29,11 @@ resource "aws_iam_role" "github_actions_terraform" {
         # workflow presents a token to this OIDC provider could assume
         # the role.
         StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:*"
+          # El claim `sub` de GitHub puede incluir IDs numéricos de org y repo
+          # (repo:Portfolio-jaime<id>/trip-covenas<id>:...), así que se usan
+          # comodines que restringen al org y repo concretos sin exigir el
+          # formato exacto. Sin esto, AssumeRoleWithWebIdentity es denegado.
+          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo_owner}*/${var.github_repo_name}*:*"
         }
       }
     }]
