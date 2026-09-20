@@ -31,6 +31,28 @@ jobs:
         with:
           terraform_version: "~> 1.15"
 
+      # Construye el paquete Lambda antes de Terraform (ver nota en
+      # terraform-apply.yml): el data.archive_file necesita infra/build/package
+      # en tiempo de refresh, que no existe en un checkout limpio de CI.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build Lambda package
+        working-directory: .
+        run: |
+          set -euo pipefail
+          rm -rf infra/build/package
+          mkdir -p infra/build/package
+          pip3 install --no-cache-dir --quiet \
+            --platform manylinux2014_x86_64 \
+            --implementation cp \
+            --python-version 3.12 \
+            --only-binary=:all: \
+            -r lambda/requirements.txt \
+            -t infra/build/package
+          cp lambda/handler.py infra/build/package/handler.py
+
       - name: terraform fmt
         run: terraform fmt -check -recursive
 

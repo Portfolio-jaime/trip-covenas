@@ -33,6 +33,30 @@ jobs:
         with:
           terraform_version: "~> 1.15"
 
+      # Construye el paquete Lambda ANTES de Terraform. El data.archive_file
+      # lee infra/build/package en tiempo de refresh; en un checkout limpio de
+      # CI ese directorio no existe (el null_resource no corre a tiempo), así
+      # que lo generamos aquí explícitamente. Mismo pip install que el
+      # null_resource lambda_build (Linux x86_64 wheels).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build Lambda package
+        working-directory: .
+        run: |
+          set -euo pipefail
+          rm -rf infra/build/package
+          mkdir -p infra/build/package
+          pip3 install --no-cache-dir --quiet \
+            --platform manylinux2014_x86_64 \
+            --implementation cp \
+            --python-version 3.12 \
+            --only-binary=:all: \
+            -r lambda/requirements.txt \
+            -t infra/build/package
+          cp lambda/handler.py infra/build/package/handler.py
+
       - name: terraform init
         run: terraform init
 
