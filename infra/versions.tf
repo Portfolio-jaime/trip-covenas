@@ -16,16 +16,13 @@ terraform {
     }
   }
 
-  # --- State backend: S3, reusing the same account's existing bootstrap --
-  # `taxops11-tfstate-786567028012` is a versioned, encrypted, public-
-  # access-blocked bucket already standing in this same personal AWS
-  # account (786567028012) for the TaxOps-11 project. Rather than stand up
-  # a second bootstrap bucket for one more personal project, this reuses
-  # it with its own key prefix — no bucket-per-project needed.
-  # `use_lockfile` is Terraform 1.10+'s native S3 locking, so no DynamoDB
-  # table is needed either.
+  # --- State backend: S3, reusing the ai-platform account's tfstate bucket --
+  # Migrado a la cuenta dedicada ai-platform-arheanja (080891698277) el
+  # 2026-09-19. Reutiliza el bucket tfstate de DIAN-bot con su propia key
+  # (un bucket por cuenta, key por proyecto). `use_lockfile` = locking nativo
+  # de S3 (Terraform 1.10+), sin DynamoDB.
   backend "s3" {
-    bucket       = "taxops11-tfstate-786567028012"
+    bucket       = "dianbot-tfstate-080891698277"
     key          = "trip-covenas/terraform.tfstate"
     region       = "us-east-1"
     use_lockfile = true
