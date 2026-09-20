@@ -81,6 +81,18 @@ variable "github_repo" {
   default     = "Portfolio-jaime/trip-covenas"
 }
 
+variable "github_repo_owner" {
+  description = "GitHub org/owner (para el patrón OIDC sub con comodín por los IDs numéricos)."
+  type        = string
+  default     = "Portfolio-jaime"
+}
+
+variable "github_repo_name" {
+  description = "Nombre del repo (para el patrón OIDC sub con comodín)."
+  type        = string
+  default     = "trip-covenas"
+}
+
 variable "frontend_build_dir" {
   description = <<-EOT
     Path to the built static frontend assets to upload to S3, relative to
