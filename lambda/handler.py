@@ -440,6 +440,28 @@ def build_summary(
     def _abonado_por(nombre: str) -> float:
         return sum(a["valor"] for a in abonos if _names_match(a["nombre"], nombre))
 
+    # Cabin-only shortfall. Abonos are usually paid by one member for the
+    # whole family, so it is computed per group (cabin owed - group paid)
+    # and then spread over the members by nights stayed.
+    _by_group: dict[str, list[dict]] = {}
+    for p in personas:
+        _by_group.setdefault(p["grupo"], []).append(p)
+    falta_cabana_grupo: dict[str, float] = {}
+    for raw_group, members in _by_group.items():
+        cabana_owed = sum(m["noches"] for m in members) * rate_per_person_night
+        paid_g = sum(
+            a["valor"]
+            for a in abonos
+            if any(_names_match(a["nombre"], m["nombre"]) for m in members)
+        )
+        falta_cabana_grupo[raw_group] = max(0.0, cabana_owed - paid_g)
+
+    def _falta_persona(p: dict) -> float:
+        noches_g = sum(m["noches"] for m in _by_group[p["grupo"]])
+        if not noches_g:
+            return 0.0
+        return falta_cabana_grupo[p["grupo"]] * p["noches"] / noches_g
+
     # Per-person detail - the full "Personas" tab, individually granular
     # (unlike `grupos` below, which rolls this up per family group).
     personas_out = []
@@ -460,6 +482,7 @@ def build_summary(
                 "totalACargo": _to_money_int(total_a_cargo),
                 "totalAbonado": _to_money_int(abonado),
                 "saldo": _to_money_int(abonado - total_a_cargo),
+                "faltaCabana": _to_money_int(_falta_persona(p)),
                 "extra": p.get("extra", {}),
             }
         )
@@ -490,6 +513,11 @@ def build_summary(
                 "sub": f"{_join_names_es([m['nombre'] for m in members])} · {int(noches_grupo)} noches",
                 "owed": _to_money_int(owed),
                 "paid": _to_money_int(paid),
+                "faltaCabana": _to_money_int(falta_cabana_grupo[raw_group]),
+                "faltaPorPersona": _to_money_int(
+                    falta_cabana_grupo[raw_group] / len(members)
+                ),
+                "personas": len(members),
                 "pending": _detect_pending(raw_group, members),
             }
         )
@@ -535,6 +563,11 @@ def build_summary(
             "abonado": _to_money_int(total_abonado),
             "granTotal": _to_money_int(gran_total),
             "pendienteRecaudar": _to_money_int(pendiente_recaudar),
+            "faltaCabana": _to_money_int(sum(falta_cabana_grupo.values())),
+            "faltaCabanaPorPersona": _to_money_int(
+                sum(falta_cabana_grupo.values()) / len(personas) if personas else 0
+            ),
+            "personas": len(personas),
         },
         "grupos": grupos_out,
         "personas": personas_out,

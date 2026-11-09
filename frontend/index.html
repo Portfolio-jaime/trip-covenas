@@ -207,7 +207,7 @@
       <div class="stat-card"><p class="k">Costo total viaje</p><p class="v" id="stat-total">—</p></div>
       <div class="stat-card"><p class="k">Recaudado</p><p class="v ocean" id="stat-abonado">—</p></div>
       <div class="stat-card"><p class="k">Falta por recaudar</p><p class="v coral" id="stat-pendiente">—</p></div>
-      <div class="stat-card"><p class="k">Por persona (6 noches)</p><p class="v" id="stat-persona">—</p></div>
+      <div class="stat-card"><p class="k">Falta cabaña / persona</p><p class="v" id="stat-persona">—</p></div>
     </div>
 
     <section class="block">
@@ -393,6 +393,12 @@
     return { cls: "debe", text: "Debe " + fmt(-balance) };
   }
 
+  function faltaCabanaText(falta, porPersona) {
+    if (!falta) return "Cabaña pagada \u2713";
+    return "Falta cabaña: <b>" + fmt(falta) + "</b>" +
+      (porPersona ? " (\u2248 " + fmt(porPersona) + " por persona)" : "");
+  }
+
   function renderGroups(grupos) {
     var list = document.getElementById("balance-list");
     list.innerHTML = "";
@@ -409,7 +415,8 @@
         '<div class="b-bar-row">' +
           '<div class="b-bar"><div class="b-bar-fill" style="width:' + pct + '%"></div></div>' +
           '<span class="b-figs"><b>' + fmt(g.paid) + '</b> / ' + fmt(g.owed) + '</span>' +
-        '</div>';
+        '</div>' +
+        '<p class="section-note" style="margin-top:6px">' + faltaCabanaText(g.faltaCabana, g.faltaPorPersona) + '</p>';
       list.appendChild(card);
     });
   }
@@ -437,6 +444,7 @@
           '<div class="b-bar"><div class="b-bar-fill" style="width:' + pct + '%"></div></div>' +
           '<span class="b-figs"><b>' + fmt(p.totalAbonado) + '</b> / ' + fmt(p.totalACargo) + '</span>' +
         '</div>' +
+        '<p class="section-note" style="margin-top:6px">' + faltaCabanaText(p.faltaCabana) + '</p>' +
         (p.nota ? '<p class="section-note" style="margin-top:8px">' + p.nota + '</p>' : '') +
         (extraFieldsText(p.extra) ? '<p class="section-note" style="margin-top:4px">' + extraFieldsText(p.extra) + '</p>' : '');
       list.appendChild(card);
@@ -582,8 +590,7 @@
     document.getElementById("stat-total").textContent = fmt(data.totales.granTotal);
     document.getElementById("stat-abonado").textContent = fmt(data.totales.abonado);
     document.getElementById("stat-pendiente").textContent = fmt(data.totales.pendienteRecaudar);
-    var basePersonas = (data.personas || []).length || 1;
-    document.getElementById("stat-persona").textContent = fmt(data.totales.granTotal / basePersonas);
+    document.getElementById("stat-persona").textContent = fmt(data.totales.faltaCabanaPorPersona || 0);
 
     renderGroups(data.grupos || []);
     renderPersonas(data.personas || []);
