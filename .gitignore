@@ -50,3 +50,7 @@ __pycache__/
 # OS cruft
 .DS_Store
 .envrc
+
+# Exportaciones de WhatsApp y contactos: datos de terceros (telefonos, nombres), nunca al repo.
+Chat de WhatsApp*/
+*.vcf
