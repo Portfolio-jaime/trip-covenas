@@ -1,4 +1,4 @@
-// Pestaña "Tesla": simulador de la ruta Medellín ⇄ Coveñas en Model Y RWD.
+// Página "Ruta Tesla" (tesla.html): simulador de la ruta Medellín ⇄ Coveñas en Model Y RWD.
 // Todo corre en el navegador (sin API): datos en tesla-data.js, lógica aquí.
 // El motor (simulate) es puro y no toca el DOM; la UI solo lo llama.
 (function () {
@@ -775,31 +775,15 @@
   }
 
   function mount() {
-    var tabbar = document.querySelector(".tabbar");
-    var wrap = document.querySelector(".wrap");
-    var footer = document.getElementById("footer-note");
-    if (!tabbar || !wrap || !footer || document.getElementById("panel-tesla")) return;
-
-    var btn = document.createElement("button");
-    btn.className = "tab-btn";
-    btn.setAttribute("role", "tab");
-    btn.setAttribute("aria-selected", "false");
-    btn.dataset.tab = "tesla";
-    btn.textContent = "⚡ Tesla";
-    tabbar.appendChild(btn);
-    if (window.__wireTabClick) window.__wireTabClick(btn);
-
-    var panel = document.createElement("div");
-    panel.className = "tabpanel tz-root";
-    panel.id = "panel-tesla";
+    var panel = document.getElementById("tesla-app");
+    if (!panel) return;
+    panel.classList.add("tz-root");
     panel.innerHTML = panelHtml();
-    wrap.insertBefore(panel, footer);
 
     applyPreset(state.preset);
     renderControls();
     renderResults();
     updateCabana();
-    if (location.hash === "#tesla") btn.click();
 
     panel.addEventListener("input", function (e) {
       if (e.target.id && e.target.id.indexOf("tz-cab-") === 0) updateCabana();

@@ -56,7 +56,15 @@ Signed-off-by: Jaime Henao <arheanja@gmail.com>
   repo, superseded by the AWS dashboard below) — a manual snapshot, regenerated on request, not
   live-connected to the sheet.
 
-## Tesla tab (`frontend/tesla*.{js,css}`)
+## Frontend layout
+
+Multi-page static site: `index.html` (landing, reads `/api/summary` for stats + countdown), `cuentas.html`
+(the dashboard; deep-linkable tabs like `#estimado`), `tesla.html` (Tesla page). Shared styles in `site.css`.
+`--brand` is a fixed dark teal for buttons/active chips so white text keeps contrast in dark mode.
+CloudFront caches ~24 h (no invalidation in CI): after changing an existing page, run the invalidation in
+`infra/README.md`.
+
+## Tesla page (`frontend/tesla.html`, `tesla*.{js,css}`)
 
 Static, client-side simulator for Medellín ⇄ Coveñas in a Model Y RWD (no API). Data/assumptions live in
 `tesla-data.js` (calibrated against real WhatsApp trip reports; unconfirmed chargers are flagged
