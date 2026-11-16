@@ -246,8 +246,16 @@
       return '<div class="stat-card"><p class="k">' + c.k + '</p><p class="v">' + c.v + '</p><p class="tz-sub">' + c.sub + "</p></div>";
     }).join("");
 
+    var nStops = res.steps.filter(function (x) { return x.type === "stop"; }).length;
+    var dest = state.dir === "ida" ? "Coveñas" : "Medellín";
+    el("tz-headline").innerHTML = res.ok
+      ? '<div class="tz-big">Llegas a ' + dest + " con <b>" + pct(res.arriveSoc) + "</b></div>" +
+        '<div class="tz-muted">Salida ' + state.depart + " → llegada " + clock(depart + res.totalMin) + " · " +
+        nStops + (nStops === 1 ? " parada" : " paradas") + " de carga · " + Math.round(res.km) + " km</div>"
+      : '<div class="tz-big bad">Con este plan no llegas</div><div class="tz-muted">La batería se agota entre ' +
+        esc(nodeName(res.failAt.from).split(" (")[0]) + " y " + esc(nodeName(res.failAt.to).split(" (")[0]) + ".</div>";
     el("tz-verdict").innerHTML = verdictBadge(res.verdict, state.reserve) +
-      ' <span class="tz-muted">Mínimo en ruta: <b>' + pct(Math.max(res.minSoc, 0)) + "</b> · " + Math.round(res.km) + " km</span>";
+      ' <span class="tz-muted">Mínimo en ruta: <b>' + pct(Math.max(res.minSoc, 0)) + "</b></span>";
 
     el("tz-chart").innerHTML = chartSvg(res, cfg);
     el("tz-alerts").innerHTML = alertsHtml(res, cfg);
@@ -473,38 +481,200 @@
   }
 
   // ====================================================================
+  // Asistente (chat con Groq vía /api/chat)
+  // ====================================================================
+
+  var SUGGESTIONS = [
+    "¿Está funcionando hoy el cargador de Fátima?",
+    "¿Qué hago si Fátima está fuera de servicio?",
+    "Armo el regreso con 5 personas, ¿cómo lo ves?",
+    "¿Hay algún cargador nuevo entre Caucasia y Montería?"
+  ];
+  var chatHistory = [];
+  var chatBusy = false;
+
+  function chatUrl() {
+    var api = window.DASHBOARD_API_URL || "";
+    return /\/summary$/.test(api) ? api.replace(/\/summary$/, "/chat") : "";
+  }
+
+  // Resumen compacto de datos + estado del simulador para el modelo. El
+  // servidor limita su tamaño (6000 caracteres), así que se recorta aquí.
+  function cut(s, n) { s = String(s); return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+
+  function buildContext() {
+    var res = simulate(cfgOf(state));
+    var lines = ["VEHÍCULO: Model Y RWD, batería útil " + state.usable + " kWh."];
+    lines.push("CARGADORES:");
+    Object.keys(D.chargers).forEach(function (k) {
+      var c = D.chargers[k];
+      lines.push("- " + c.name + " (" + cut(c.place, 70) + "): app " + c.kw.nominal + " kW, real " + c.kw.realista +
+        " kW, " + c.statusText + ". " + cut(c.notes, 170));
+    });
+    lines.push("TRAMOS (km, Wh/km ida): " + Object.keys(D.legs).map(function (k) {
+      return k + " " + D.legs[k].km + "/" + D.legs[k].wh;
+    }).join("; ") + ". Regreso Fátima→Popalito gasta ~27% más.");
+    lines.push("REPORTES REALES:");
+    D.reports.forEach(function (r) { lines.push("- " + r.date + " " + cut(r.route, 40) + ": " + cut(r.text, 150)); });
+    lines.push("SIMULACIÓN ACTUAL: " + state.dir + ", ruta " + state.route + ", sale con " + state.startSoc + "%, estilo " + state.style +
+      ", reserva " + state.reserve + "%, cargadores '" + state.scenario + "'.");
+    lines.push("Paradas: " + (Object.keys(state.stops).filter(function (k) { return state.stops[k].charge; }).map(function (k) {
+      return k + "→" + state.stops[k].target + "%";
+    }).join(", ") || "ninguna"));
+    lines.push("Resultado: " + (res.ok ? "llega con " + Math.round(res.arriveSoc) + "%" : "NO llega") + ", mínimo " +
+      Math.round(Math.max(res.minSoc, 0)) + "%, total " + dur(res.totalMin) + ", cargando " + dur(res.chargeMin) + ".");
+    return cut(lines.join("\n"), 5800);
+  }
+
+  // Interpreta la respuesta: texto + (opcional) bloque ```plan {...}```.
+  function splitReply(reply) {
+    var m = /```plan\s*([\s\S]*?)```/.exec(reply);
+    var text = reply.replace(/```plan[\s\S]*?```/g, "").trim();
+    var plan = null;
+    if (m) { try { plan = sanitizePlan(JSON.parse(m[1])); } catch (e) { plan = null; } }
+    return { text: text, plan: plan };
+  }
+
+  // El plan viene de un modelo: solo se aceptan campos y valores conocidos.
+  function sanitizePlan(p) {
+    if (!p || typeof p !== "object") return null;
+    var out = { stops: {} };
+    if (p.dir === "ida" || p.dir === "regreso") out.dir = p.dir;
+    if (D.routes[p.route]) out.route = p.route;
+    if (typeof p.startSoc === "number" && p.startSoc >= 20 && p.startSoc <= 100) out.startSoc = Math.round(p.startSoc);
+    if (D.styles[p.style]) out.style = p.style;
+    var stops = p.stops && typeof p.stops === "object" ? p.stops : {};
+    Object.keys(stops).forEach(function (id) {
+      var node = D.nodes[id], s = stops[id];
+      if (!node || !node.chargers.length || !s || typeof s.target !== "number") return;
+      var entry = { charge: true, target: Math.max(30, Math.min(100, Math.round(s.target / 5) * 5)) };
+      if (s.charger && node.chargers.indexOf(s.charger) !== -1) entry.charger = s.charger;
+      out.stops[id] = entry;
+    });
+    return Object.keys(out).length > 1 || Object.keys(out.stops).length ? out : null;
+  }
+
+  function applyPlan(plan) {
+    ["dir", "route", "startSoc", "style"].forEach(function (k) { if (plan[k] !== undefined) state[k] = plan[k]; });
+    state.stops = plan.stops;
+    state.preset = "";
+    renderControls();
+    renderResults();
+    showSub("plan");
+  }
+
+  // Texto seguro: se escapa todo y solo se re-habilitan negritas, saltos y enlaces https.
+  function richText(text) {
+    var html = esc(text)
+      .replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")
+      .replace(/(https:\/\/[^\s<)\]]+)/g, function (u) {
+        return '<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + u.replace(/^https:\/\//, "").slice(0, 48) + "</a>";
+      });
+    return html.replace(/\n/g, "<br>");
+  }
+
+  function addBubble(role, html, extra) {
+    var box = el("tz-msgs");
+    var div = document.createElement("div");
+    div.className = "tz-msg " + role;
+    div.innerHTML = html + (extra || "");
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+    return div;
+  }
+
+  var CHAT_ERRORS = {
+    429: "Groq está al límite del plan gratis. Espera un minuto y vuelve a intentar.",
+    503: "El asistente todavía no está activado (falta la clave de Groq en el servidor).",
+    504: "La búsqueda web tardó demasiado. Intenta de nuevo con una pregunta más corta.",
+    403: "Este sitio no está autorizado para usar el asistente."
+  };
+
+  function sendChat(question) {
+    question = (question || "").trim();
+    if (!question || chatBusy) return;
+    var url = chatUrl();
+    addBubble("user", esc(question));
+    if (!url) { addBubble("bot error", "El asistente no está configurado en este sitio."); return; }
+    chatHistory.push({ role: "user", content: question });
+    chatBusy = true;
+    el("tz-send").disabled = true;
+    var thinking = addBubble("bot thinking", "Consultando datos y buscando en la web…");
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: chatHistory.slice(-6), context: buildContext() })
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (b) { return { status: r.status, body: b }; });
+    }).then(function (r) {
+      thinking.remove();
+      if (r.status !== 200 || !r.body.reply) {
+        chatHistory.pop();
+        addBubble("bot error", esc(CHAT_ERRORS[r.status] || "No pude responder ahora. Intenta de nuevo en un momento."));
+        return;
+      }
+      chatHistory.push({ role: "assistant", content: r.body.reply });
+      var parts = splitReply(r.body.reply);
+      var btn = parts.plan ? '<button type="button" class="tz-chip tz-apply">▶ Simular este plan</button>' : "";
+      var bubble = addBubble("bot", richText(parts.text || "Listo."), btn);
+      if (parts.plan) bubble.querySelector(".tz-apply").onclick = function () { applyPlan(parts.plan); };
+    }).catch(function () {
+      thinking.remove();
+      chatHistory.pop();
+      addBubble("bot error", "Sin conexión con el asistente. Revisa tu internet e intenta de nuevo.");
+    }).then(function () {
+      chatBusy = false;
+      el("tz-send").disabled = false;
+    });
+  }
+
+  function chatPanelHtml() {
+    return '<div class="tz-chat">' +
+      '<div class="tz-msgs" id="tz-msgs" aria-live="polite">' +
+        '<div class="tz-msg bot">Hola 👋 Soy el asistente de la ruta. Conozco los cargadores, los reportes de otros conductores y el plan que tienes en el simulador, y puedo buscar en la web el estado actual. Pregúntame lo que quieras o pídeme que arme un plan.</div>' +
+      "</div>" +
+      '<div class="tz-suggest">' + SUGGESTIONS.map(function (q) {
+        return '<button type="button" class="tz-chip" data-ask="' + esc(q) + '">' + esc(q) + "</button>";
+      }).join("") + "</div>" +
+      '<form class="tz-form" id="tz-form"><input id="tz-input" type="text" maxlength="500" autocomplete="off" placeholder="Escribe tu pregunta…" aria-label="Pregunta para el asistente">' +
+      '<button type="submit" id="tz-send" class="tz-send">Enviar</button></form>' +
+      '<p class="tz-fine">Respuestas generadas por IA con búsqueda web. Verifica el estado de los cargadores antes de salir.</p>' +
+    "</div>";
+  }
+
+  // ====================================================================
   // Secciones estáticas
   // ====================================================================
 
   function chargersHtml() {
     return Object.keys(D.chargers).filter(function (k) { return k !== "hipotesis"; }).map(function (k) {
       var c = D.chargers[k];
-      return '<div class="b-card"><div class="b-top"><div><span class="b-name">' + esc(c.name) + '</span> &nbsp;<span class="b-sub">' + esc(c.place) + "</span></div>" +
+      return '<div class="tz-card"><div class="tz-card-top"><div><div class="tz-card-title">' + esc(c.name) + '</div><div class="tz-muted">' + esc(c.place) + "</div></div>" +
         '<span class="tz-badge ' + (c.status === "ok" ? "ok" : (c.status === "warn" ? "warn" : "info")) + '">' + esc(c.statusText) + "</span></div>" +
-        '<p class="section-note"><b>' + esc(c.connector) + "</b> · app " + c.kw.nominal + " kW · reportado " + c.kw.realista + " kW</p>" +
-        '<p class="section-note" style="margin-top:6px">' + esc(c.notes) + "</p></div>";
+        '<div class="tz-specs"><span><b>' + c.kw.nominal + " kW</b> app</span><span><b>" + c.kw.realista + " kW</b> reportado</span><span>" + esc(c.connector) + "</span></div>" +
+        '<p class="tz-card-text">' + esc(c.notes) + "</p></div>";
     }).join("");
   }
 
   function candidatesHtml() {
     return D.candidates.map(function (c) {
-      return '<div class="grid-kv"><span class="grid-kv-label"><b>' + esc(c.name) + "</b><br>" + esc(c.text) + "</span>" +
-        (c.link ? '<a class="grid-kv-value" href="' + esc(c.link) + '" target="_blank" rel="noopener noreferrer">abrir</a>' : "") + "</div>";
+      return '<div class="tz-todo-item"><div><b>' + esc(c.name) + '</b><div class="tz-muted">' + esc(c.text) + "</div></div>" +
+        (c.link ? '<a class="tz-link" href="' + esc(c.link) + '" target="_blank" rel="noopener noreferrer">Abrir ↗</a>' : "") + "</div>";
     }).join("");
   }
 
   function reportsHtml() {
-    return '<div class="grid-table-wrap"><table class="grid-table"><thead><tr><th>Fecha</th><th>Carro</th><th>Ruta</th><th>Qué pasó</th></tr></thead><tbody>' +
-      D.reports.map(function (r) {
-        return "<tr><td>" + esc(r.date) + "</td><td>" + esc(r.car) + "</td><td>" + esc(r.route) + "</td><td>" + esc(r.text) + "</td></tr>";
-      }).join("") + "</tbody></table></div>";
+    return D.reports.map(function (r) {
+      return '<div class="tz-card"><div class="tz-card-top"><div class="tz-card-title">' + esc(r.route) + '</div><span class="tz-badge info">' +
+        esc(r.date) + (r.car !== "—" ? " · " + esc(r.car) : "") + "</span></div><p class=\"tz-card-text\">" + esc(r.text) + "</p></div>";
+    }).join("");
   }
 
   function checklistHtml() {
     var saved = {};
     try { saved = JSON.parse(localStorage.getItem("tz-checklist") || "{}"); } catch (e) { saved = {}; }
     return D.checklist.map(function (t, i) {
-      return '<label class="tz-check tz-todo"><input type="checkbox" data-todo="' + i + '"' + (saved[i] ? " checked" : "") + "> " + esc(t) + "</label>";
+      return '<label class="tz-check tz-todo"><input type="checkbox" data-todo="' + i + '"' + (saved[i] ? " checked" : "") + "> <span>" + esc(t) + "</span></label>";
     }).join("");
   }
 
@@ -521,58 +691,87 @@
   // Montaje del panel
   // ====================================================================
 
+  var SUBS = [
+    { id: "plan", label: "Mi plan" },
+    { id: "asistente", label: "Asistente IA" },
+    { id: "cargadores", label: "Cargadores" },
+    { id: "viajes", label: "Viajes reales" },
+    { id: "checklist", label: "Checklist" }
+  ];
+
+  function showSub(id) {
+    Array.prototype.forEach.call(document.querySelectorAll(".tz-subbtn"), function (b) {
+      b.setAttribute("aria-selected", String(b.getAttribute("data-sub") === id));
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(".tz-subpanel"), function (p) {
+      p.classList.toggle("active", p.id === "tz-sub-" + id);
+    });
+  }
+
+  function more(title, hint, inner) {
+    return '<details class="tz-more"><summary><span>' + title + '</span><span class="tz-muted">' + hint + "</span></summary><div class=\"tz-more-body\">" + inner + "</div></details>";
+  }
+
   function panelHtml() {
-    return '' +
-    '<section class="block" id="tz-sim-top">' +
-      '<div class="section-head"><h2>⚡ Ruta Tesla · Medellín ⇄ Coveñas</h2><p class="section-note">Model Y RWD · ruta nueva por Barbosa, Cisneros, Remedios y Caucasia, sin pasar por Sincelejo</p></div>' +
-      '<div class="notes"><b>Lo que dicen los reportes reales</b><br>' +
-        'Sin cargar no se llega: Popalito→Fátima gasta ~75% de la batería. <b>Fátima es el punto crítico</b> (único rápido en ~300 km, rinde ~20 kW y a veces falla). ' +
-        'Si Fátima falla, la salida es llegar a Montería en modo Eco (~15%) donde están MubOn La Castellana (60 kW) y Places Mall (11 kW). ' +
-        'El <b>regreso</b> Fátima→Popalito consume ~27% más y es el tramo más difícil. Los números son estimaciones calibradas con esos reportes, no garantías.</div>' +
-    '</section>' +
-
-    '<section class="block"><div class="section-head"><h2>Escenarios</h2><p class="section-note">Toca uno para cargarlo y ajustarlo abajo</p></div>' +
-      '<div class="tz-chips" id="tz-presets"></div></section>' +
-
-    '<section class="block"><div class="section-head"><h2>Supuestos</h2></div><div class="b-card">' +
-      '<div class="tz-seg" role="group" aria-label="Sentido"><button type="button" id="tz-dir-ida" data-dir="ida">Ida · Medellín → Coveñas</button>' +
-      '<button type="button" id="tz-dir-regreso" data-dir="regreso">Regreso · Coveñas → Medellín</button></div>' +
+    var settings = '<div class="tz-seg" role="group" aria-label="Sentido"><button type="button" id="tz-dir-ida" data-dir="ida">Ida · a Coveñas</button>' +
+      '<button type="button" id="tz-dir-regreso" data-dir="regreso">Regreso · a Medellín</button></div>' +
       '<div class="tz-grid2">' +
         '<label>Ruta<select id="tz-route">' + Object.keys(D.routes).map(function (k) { return '<option value="' + k + '">' + esc(D.routes[k].label) + "</option>"; }).join("") + "</select></label>" +
         '<label>Estilo de manejo' + selectHtml("tz-style", D.styles, state.style) + "</label>" +
         '<label>Pasajeros y equipaje' + selectHtml("tz-load", D.loads, state.load) + "</label>" +
         '<label>Cómo se portan los cargadores' + selectHtml("tz-scenario", D.scenarios, state.scenario) + "</label>" +
         '<label>Batería al salir: <b id="tz-start-v"></b><input id="tz-start" type="range" min="20" max="100" step="1"></label>' +
-        '<label>Reserva mínima de llegada: <b id="tz-reserve-v">' + state.reserve + '%</b><input id="tz-reserve" type="range" min="5" max="30" step="1" value="' + state.reserve + '"></label>' +
+        '<label>Reserva mínima: <b id="tz-reserve-v">' + state.reserve + '%</b><input id="tz-reserve" type="range" min="5" max="30" step="1" value="' + state.reserve + '"></label>' +
         '<label>Hora de salida<input id="tz-depart" type="time" value="' + state.depart + '"></label>' +
         '<label>Batería útil (kWh)<input id="tz-usable" type="number" min="40" max="90" step="0.5" value="' + state.usable + '"></label>' +
         '<label>Precio de la carga ($/kWh)<input id="tz-price" type="number" min="0" step="50" value="' + state.price + '"></label>' +
         '<label>kW del punto hipotético<input id="tz-customkw" type="number" min="1" max="150" step="1" value="' + state.customKw + '"></label>' +
-      "</div></div></section>" +
+      "</div>";
 
-    '<section class="block"><div class="section-head"><h2>Paradas de carga</h2><p class="section-note">Activa y ajusta dónde cargar</p></div><div id="tz-stops" class="balance-list"></div></section>' +
+    return '' +
+    '<header class="tz-hero" id="tz-sim-top"><p class="eyebrow">Ruta en Tesla</p>' +
+      "<h2>Medellín ⇄ Coveñas</h2>" +
+      '<p class="tz-hero-sub">Model Y RWD · ruta nueva por Barbosa, Cisneros, Remedios y Caucasia, sin pasar por Sincelejo. Simula tu plan, mira qué pasa si algo falla y pregúntale al asistente.</p></header>' +
 
-    '<section class="block"><div class="section-head"><h2>Resultado</h2><div id="tz-verdict"></div></div>' +
-      '<div class="stats tz-kpis" id="tz-kpis"></div>' +
-      '<div class="b-card" style="margin-top:14px" id="tz-chart"></div>' +
-      '<ul class="tz-alerts" id="tz-alerts"></ul><div id="tz-timeline"></div></section>' +
+    '<nav class="tz-subnav" role="tablist" aria-label="Secciones de la ruta Tesla">' + SUBS.map(function (s) {
+      return '<button type="button" role="tab" class="tz-subbtn" data-sub="' + s.id + '" aria-selected="' + (s.id === "plan") + '">' + s.label + "</button>";
+    }).join("") + "</nav>" +
 
-    '<section class="block"><div class="section-head"><h2>¿Y si falla un cargador?</h2><p class="section-note">Mismo plan, saltándose cada parada</p></div><div id="tz-failmatrix"></div></section>' +
+    '<div class="tz-subpanel active" id="tz-sub-plan">' +
+      '<div class="tz-insights">' +
+        '<div class="tz-insight"><b>Fátima manda</b><span>Es el único cargador rápido en ~300 km y rinde ~20 kW.</span></div>' +
+        '<div class="tz-insight"><b>Plan B</b><span>Eco desde Popalito al 100% llega a Montería con ~15%.</span></div>' +
+        '<div class="tz-insight"><b>El regreso pesa</b><span>Fátima→Popalito gasta ~27% más que la ida.</span></div>' +
+      "</div>" +
+      '<h3 class="tz-h3">Elige un escenario</h3><div class="tz-chips" id="tz-presets"></div>' +
+      '<div class="tz-result"><div class="tz-result-head"><div id="tz-headline"></div><div id="tz-verdict"></div></div>' +
+        '<div class="stats tz-kpis" id="tz-kpis"></div>' +
+        '<div id="tz-chart"></div><ul class="tz-alerts" id="tz-alerts"></ul></div>' +
+      more("Ajustar supuestos", "sentido, estilo, batería, precio", settings) +
+      more("Paradas de carga", "dónde y hasta cuánto cargar", '<div id="tz-stops" class="tz-stops"></div>') +
+      more("Detalle hora por hora", "tramos, paradas y tiempos", '<div id="tz-timeline"></div>') +
+      more("¿Y si falla un cargador?", "el mismo plan sin cada parada", '<div id="tz-failmatrix"></div>') +
+      more("Comparar todos los escenarios", "con tus supuestos", '<div id="tz-compare"></div>') +
+      more("Cargar en la cabaña", "para el regreso", cabanaHtml()) +
+    "</div>" +
 
-    '<section class="block"><div class="section-head"><h2>Comparar escenarios</h2><p class="section-note">Con tus supuestos de arriba · toca una fila para abrirla</p></div><div id="tz-compare"></div></section>' +
+    '<div class="tz-subpanel" id="tz-sub-asistente">' + chatPanelHtml() + "</div>" +
 
-    '<section class="block"><div class="section-head"><h2>Cargar en la cabaña</h2><p class="section-note">Para el regreso</p></div><div class="b-card">' + cabanaHtml() + "</div></section>" +
+    '<div class="tz-subpanel" id="tz-sub-cargadores"><div class="tz-cards">' + chargersHtml() + "</div>" +
+      '<h3 class="tz-h3">Por investigar <span class="tz-muted">· ninguno está confirmado</span></h3><div class="tz-list">' + candidatesHtml() + "</div></div>" +
 
-    '<section class="block"><div class="section-head"><h2>Cargadores de la ruta</h2><p class="section-note">Lo que se sabe y lo que no</p></div><div class="balance-list">' + chargersHtml() + "</div></section>" +
+    '<div class="tz-subpanel" id="tz-sub-viajes"><p class="tz-muted tz-intro">Reportes de otros conductores en los grupos de WhatsApp, sin nombres.</p><div class="tz-cards">' + reportsHtml() + "</div></div>" +
 
-    '<section class="block"><div class="section-head"><h2>Por investigar</h2><p class="section-note">Ninguno está confirmado</p></div><div class="b-card">' + candidatesHtml() + "</div></section>" +
+    '<div class="tz-subpanel" id="tz-sub-checklist"><div class="tz-list" id="tz-checklist">' + checklistHtml() + "</div>" +
+      '<p class="tz-fine">Se guarda en este navegador. Fuentes: ' + D.sources.map(esc).join(" · ") +
+      " Los consumos son estimaciones; la pantalla del Tesla y ABRP mandan el día del viaje.</p></div>";
+  }
 
-    '<section class="block"><div class="section-head"><h2>Viajes reales</h2><p class="section-note">Sin nombres · grupos de WhatsApp</p></div>' + reportsHtml() + "</section>" +
-
-    '<section class="block"><div class="section-head"><h2>Checklist</h2><p class="section-note">Se guarda en este navegador</p></div><div class="b-card" id="tz-checklist">' + checklistHtml() + "</div></section>" +
-
-    '<section class="block"><div class="notes"><b>Fuentes y límites</b><br>' + D.sources.map(esc).join("<br>") +
-      "<br>Los consumos son estimaciones; la pantalla del Tesla y ABRP mandan el día del viaje.</div></section>";
+  function onSubnav(e) {
+    var b = e.target.closest ? e.target.closest("[data-sub]") : null;
+    if (b) showSub(b.getAttribute("data-sub"));
+    var ask = e.target.closest ? e.target.closest("[data-ask]") : null;
+    if (ask) sendChat(ask.getAttribute("data-ask"));
   }
 
   function mount() {
@@ -591,7 +790,7 @@
     if (window.__wireTabClick) window.__wireTabClick(btn);
 
     var panel = document.createElement("div");
-    panel.className = "tabpanel";
+    panel.className = "tabpanel tz-root";
     panel.id = "panel-tesla";
     panel.innerHTML = panelHtml();
     wrap.insertBefore(panel, footer);
@@ -611,10 +810,17 @@
       else onChange(e);
       onTodo(e);
     });
-    panel.addEventListener("click", onClick);
+    panel.addEventListener("click", function (e) { onClick(e); onSubnav(e); });
+    el("tz-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var input = el("tz-input");
+      var q = input.value;
+      input.value = "";
+      sendChat(q);
+    });
   }
 
-  window.TeslaSim = { simulate: simulate };
+  window.TeslaSim = { simulate: simulate, splitReply: splitReply };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount);
   else mount();
 })();

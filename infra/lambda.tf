@@ -18,6 +18,7 @@ resource "null_resource" "lambda_build" {
   triggers = {
     requirements_hash = filemd5("${path.module}/../lambda/requirements.txt")
     handler_hash      = filemd5("${path.module}/../lambda/handler.py")
+    chat_hash         = filemd5("${path.module}/../lambda/chat.py")
   }
 
   provisioner "local-exec" {
@@ -34,6 +35,7 @@ resource "null_resource" "lambda_build" {
         -r "${path.module}/../lambda/requirements.txt" \
         -t "${path.module}/build/package"
       cp "${path.module}/../lambda/handler.py" "${path.module}/build/package/handler.py"
+      cp "${path.module}/../lambda/chat.py" "${path.module}/build/package/chat.py"
     EOT
   }
 }
@@ -75,5 +77,39 @@ resource "aws_lambda_function" "summary" {
   depends_on = [
     aws_cloudwatch_log_group.lambda,
     aws_iam_role_policy.lambda_inline,
+  ]
+}
+
+# --- Tesla chat (Groq) -----------------------------------------------------
+#
+# Second function in the same package. Own role and log group so its
+# permissions stay minimal (it can read the Groq key and nothing else).
+resource "aws_cloudwatch_log_group" "chat" {
+  name              = "/aws/lambda/${local.chat_function_name}"
+  retention_in_days = var.log_retention_days
+}
+
+resource "aws_lambda_function" "chat" {
+  function_name = local.chat_function_name
+  role          = aws_iam_role.chat_exec.arn
+  handler       = "chat.lambda_handler"
+  runtime       = "python3.12"
+  timeout       = var.chat_lambda_timeout
+  memory_size   = var.lambda_memory_size
+
+  filename         = data.archive_file.lambda_zip.output_path
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+
+  environment {
+    variables = {
+      GROQ_SSM_PARAM  = var.groq_api_key_ssm_param_name
+      GROQ_MODEL      = var.groq_model
+      ALLOWED_ORIGINS = join(",", local.chat_allowed_origins)
+    }
+  }
+
+  depends_on = [
+    aws_cloudwatch_log_group.chat,
+    aws_iam_role_policy.chat_inline,
   ]
 }

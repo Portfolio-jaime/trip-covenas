@@ -103,3 +103,26 @@ variable "frontend_build_dir" {
   type        = string
   default     = "../frontend"
 }
+
+variable "groq_api_key_ssm_param_name" {
+  description = <<-EOT
+    Name of the SSM SecureString parameter holding the Groq API key for the
+    Tesla chat. Created out-of-band with `aws ssm put-parameter` (see
+    infra/README.md); never written by Terraform. Until it exists, the chat
+    endpoint answers 503 and the rest of the dashboard is unaffected.
+  EOT
+  type        = string
+  default     = "/covenas-dashboard/groq-api-key"
+}
+
+variable "groq_model" {
+  description = "Groq model for the chat. Must support the built-in browser_search tool (gpt-oss family)."
+  type        = string
+  default     = "openai/gpt-oss-120b"
+}
+
+variable "chat_lambda_timeout" {
+  description = "Chat Lambda timeout in seconds. Web search can be slow; API Gateway HTTP APIs cap at 30 s."
+  type        = number
+  default     = 28
+}
