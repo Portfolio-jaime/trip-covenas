@@ -151,3 +151,20 @@ table.grid-table td.num, table.grid-table th.num { text-align: right; font-varia
 @media (max-width: 559px) { .tz-kpis .stat-card:last-child { grid-column: 1 / -1; } }
 
 .tz-page { max-width: 960px; padding-bottom: 24px; }
+
+/* ---------- Respuestas del asistente (Markdown renderizado) ---------- */
+.tz-msg.bot { max-width: 94%; }
+.tz-msg.bot > :first-child { margin-top: 0; }
+.tz-msg.bot > :last-child { margin-bottom: 0; }
+.tz-msg.bot p { margin: 0 0 10px; }
+.tz-msg.bot h4 { margin: 12px 0 6px; font-size: 14.5px; font-weight: 700; }
+.tz-msg.bot ul, .tz-msg.bot ol { margin: 0 0 10px; padding-left: 20px; }
+.tz-msg.bot li { margin: 0 0 5px; padding-left: 2px; }
+.tz-msg.bot li::marker { color: var(--ocean); }
+.tz-msg.bot code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 6px; padding: 1px 5px; }
+.tz-md-table { overflow-x: auto; margin: 0 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.tz-md-table table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.tz-md-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft);
+  background: var(--surface-2); padding: 8px 10px; white-space: nowrap; }
+.tz-md-table td { padding: 8px 10px; border-top: 1px solid var(--line); vertical-align: top; }
