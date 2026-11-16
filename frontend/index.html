@@ -172,6 +172,7 @@
   }
   @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
 </style>
+<link rel="stylesheet" href="tesla.css">
 </head>
 <body>
 
@@ -308,6 +309,7 @@
     });
   }
   Array.prototype.slice.call(document.querySelectorAll(".tab-btn")).forEach(wireTabClick);
+  window.__wireTabClick = wireTabClick; // tesla.js usa esto para su propia pestaña
 
   // ---------------- Extra tabs (dynamic) ----------------
   // One tab per key in data.extra - whatever tabs actually exist in the
@@ -329,6 +331,8 @@
 
     Object.keys(extra).forEach(function (title) {
       var key = slugify(title);
+      // La pestaña Tesla ahora es una página propia (tesla.js), no la grilla genérica de la hoja.
+      if (key === "tesla") return;
       var gridId = key + "-grid";
 
       if (!document.getElementById("panel-" + key)) {
@@ -629,5 +633,7 @@
     .catch(showError);
 })();
 </script>
+<script src="tesla-data.js"></script>
+<script src="tesla.js"></script>
 </body>
 </html>
