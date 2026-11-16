@@ -118,6 +118,15 @@ GitHub correctos) y Python 3 con `pip`.
 - Hay una propuesta para sacar los datos de Sheets y Drive hacia DynamoDB:
   [`docs/ARQUITECTURA.md` §9](docs/ARQUITECTURA.md#9-decisión-pendiente-dónde-viven-los-datos).
 
+## Pendientes
+
+- **Mover las cuentas fuera de Google Sheets/Drive** (propuesta: DynamoDB con formularios y PIN
+  familiar). Decidido dejarlo para después; el diseño y los pasos están en
+  [`docs/ARQUITECTURA.md` §9](docs/ARQUITECTURA.md#9-decisión-pendiente-dónde-viven-los-datos).
+- **Hacer el repo privado** y, si se quiere, reescribir el historial: aún contiene exportaciones de
+  WhatsApp que ya no se versionan.
+- Revisar el permiso de enlace de la hoja de cálculo.
+
 ## Costo
 
 Pensado para quedar en la capa gratuita de AWS y de Groq con el tráfico de una familia. Hay un

@@ -343,6 +343,9 @@ sí se nota es el de Groq: el chat avisa "espera un minuto" cuando se agota.
 
 ## 9. Decisión pendiente: dónde viven los datos
 
+> **Estado: aplazada.** Se decidió no migrar por ahora; las cuentas siguen en Google Sheets. Esta
+> sección queda como diseño listo para retomar.
+
 Hoy las cuentas se editan en **Google Sheets** (la familia lo usa desde el celular) y esa hoja vive
 en Google Drive. Esa dependencia se puede cambiar. Estas son las opciones evaluadas:
 
