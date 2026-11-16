@@ -37,6 +37,19 @@ aws ssm put-parameter \
 different parameter name, pass it via
 `-var google_service_account_ssm_param_name=...` in the steps below.
 
+## 1b. Groq key for the Tesla chat (optional, can be done after apply)
+
+The Tesla tab's assistant (`POST /api/chat`) calls Groq. Create a free key at
+console.groq.com, then store it yourself so it never enters chat history, code or state:
+
+```bash
+read -rs GROQ_KEY && aws ssm put-parameter \
+  --name "/covenas-dashboard/groq-api-key" --type SecureString --value "$GROQ_KEY"; unset GROQ_KEY
+```
+
+Until the parameter exists the chat answers 503 ("no activado") and nothing else is affected.
+Cleanup after the trip: `aws ssm delete-parameter --name /covenas-dashboard/groq-api-key` and revoke the key in Groq.
+
 ## 2. Init / plan / apply
 
 ```bash

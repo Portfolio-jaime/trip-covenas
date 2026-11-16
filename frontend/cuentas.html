@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cuentas · Coveñas 2026–27</title>
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">Saltar al contenido</a>
+<header class="site-nav">
+  <div class="site-nav-inner">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">🌊</span> Coveñas 2026–27</a>
+    <nav aria-label="Principal">
+      <a href="index.html">Inicio</a>
+      <a href="cuentas.html" aria-current="page">Cuentas</a>
+      <a href="tesla.html">Ruta Tesla</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="hero-inner">
+    <p class="eyebrow">Viaje familiar</p>
+    <h1 class="trip-title">Coveñas 2026–27</h1>
+    <p class="dates" id="dates-line">Cargando fechas…</p>
+    <div class="countdown">
+      <span class="num" id="countdown-num">—</span>
+      <span class="label" id="countdown-label">días para el viaje</span>
+    </div>
+  </div>
+</div>
+
+<div class="tabbar-outer">
+  <nav class="tabbar" role="tablist" aria-label="Secciones del dashboard">
+    <button class="tab-btn" role="tab" data-tab="resumen" aria-selected="true">Resumen</button>
+    <button class="tab-btn" role="tab" data-tab="personas" aria-selected="false">Personas</button>
+    <button class="tab-btn" role="tab" data-tab="gastos" aria-selected="false">Gastos</button>
+    <button class="tab-btn" role="tab" data-tab="abonos" aria-selected="false">Abonos</button>
+    <!-- Estimado / Tesla / Carros / whatever else exists in the live Sheet
+         are NOT hardcoded here - renderExtraTabs() below adds one button
+         (and one panel, further down) per extra tab the API reports. -->
+  </nav>
+</div>
+
+<div class="wrap" id="main">
+
+  <!-- ---------------- RESUMEN ---------------- -->
+  <div class="tabpanel active" id="panel-resumen">
+    <div class="stats" id="stats">
+      <div class="stat-card"><p class="k">Costo total viaje</p><p class="v" id="stat-total">—</p></div>
+      <div class="stat-card"><p class="k">Recaudado</p><p class="v ocean" id="stat-abonado">—</p></div>
+      <div class="stat-card"><p class="k">Falta por recaudar</p><p class="v coral" id="stat-pendiente">—</p></div>
+      <div class="stat-card"><p class="k">Falta cabaña / persona</p><p class="v" id="stat-persona">—</p></div>
+    </div>
+
+    <section class="block">
+      <div class="section-head">
+        <h2>Balance por grupo</h2>
+        <p class="section-note">Detalle por persona en la pestaña "Personas"</p>
+      </div>
+      <div class="balance-list" id="balance-list">
+        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="section-head">
+        <h2>Últimos gastos</h2>
+        <p class="section-note">Ver todos en la pestaña "Gastos"</p>
+      </div>
+      <div id="resumen-gastos"><div class="skeleton"></div></div>
+    </section>
+
+    <section class="block">
+      <div class="notes">
+        <b>Para tener en cuenta</b><br>
+        Fecha límite de pago de la cabaña: <b id="nota-fecha-limite">—</b>.
+        Julián entraría después del 31 si el trabajo se lo permite — su parte se suma aparte una vez confirme.
+        El costo por persona se prorratea por noches reales, no es parejo si alguien llega o se va distinto.
+      </div>
+    </section>
+  </div>
+
+  <!-- ---------------- PERSONAS ---------------- -->
+  <div class="tabpanel" id="panel-personas">
+    <section class="block">
+      <div class="section-head">
+        <h2>Personas</h2>
+        <p class="section-note">Costo individual, prorrateado por noche</p>
+      </div>
+      <div class="balance-list" id="personas-list"><div class="skeleton"></div></div>
+    </section>
+  </div>
+
+  <!-- ---------------- GASTOS ---------------- -->
+  <div class="tabpanel" id="panel-gastos">
+    <section class="block">
+      <div class="section-head">
+        <h2>Gastos</h2>
+        <p class="section-note">Comida, transporte, actividades, otros</p>
+      </div>
+      <div id="gastos-full"><div class="skeleton"></div></div>
+    </section>
+  </div>
+
+  <!-- ---------------- ABONOS ---------------- -->
+  <div class="tabpanel" id="panel-abonos">
+    <section class="block">
+      <div class="section-head">
+        <h2>Abonos / adelantos</h2>
+        <p class="section-note">Quién ha aportado a la caja del viaje</p>
+      </div>
+      <div id="abonos-full"><div class="skeleton"></div></div>
+    </section>
+  </div>
+
+  <!-- Extra tabs (Estimado, Tesla, Carros, whatever else exists in the
+       live Sheet) are inserted here by renderExtraTabs(), right before
+       the footer. -->
+
+  <footer id="footer-note">Cargando…</footer>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  var API_URL = window.DASHBOARD_API_URL;
+
+  function fmt(n) {
+    return "$" + Math.round(n).toLocaleString("es-CO");
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return "";
+    var d = new Date(iso + "T00:00:00");
+    return d.toLocaleDateString("es-CO", { day: "numeric", month: "short" });
+  }
+
+  // ---------------- Tabs ----------------
+  // wireTabClick is reused for both the static tabs below AND every
+  // dynamically-created "extra" tab (renderExtraTabs) - a tab created
+  // after page load needs the exact same click behavior as one that was
+  // always in the HTML.
+  function wireTabClick(btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".tab-btn").forEach(function (b) { b.setAttribute("aria-selected", "false"); });
+      document.querySelectorAll(".tabpanel").forEach(function (p) { p.classList.remove("active"); });
+      btn.setAttribute("aria-selected", "true");
+      document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+      window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+    });
+  }
+  Array.prototype.slice.call(document.querySelectorAll(".tab-btn")).forEach(wireTabClick);
+
+  // Permite enlazar directo a una pestaña (cuentas.html#estimado).
+  function openTabFromHash() {
+    var key = decodeURIComponent((location.hash || "").slice(1));
+    if (!/^[a-z0-9-]+$/.test(key)) return;
+    var btn = document.querySelector('.tab-btn[data-tab="' + key + '"]');
+    if (btn) btn.click();
+  }
+
+  // ---------------- Extra tabs (dynamic) ----------------
+  // One tab per key in data.extra - whatever tabs actually exist in the
+  // live Sheet beyond the core ones, discovered fresh by the Lambda on
+  // every request. Adding/renaming/removing a tab in the Sheet changes
+  // what shows up here with no code change on either end.
+  function slugify(title) {
+    return title
+      .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "") || "tab";
+  }
+
+  function renderExtraTabs(extra) {
+    var tabbar = document.querySelector(".tabbar");
+    var wrap = document.querySelector(".wrap");
+    var footerEl = document.getElementById("footer-note");
+
+    Object.keys(extra).forEach(function (title) {
+      var key = slugify(title);
+      // La pestaña Tesla de la hoja se oculta: la ruta Tesla tiene su propia página (tesla.html).
+      if (key === "tesla") return;
+      var gridId = key + "-grid";
+
+      if (!document.getElementById("panel-" + key)) {
+        var btn = document.createElement("button");
+        btn.className = "tab-btn";
+        btn.setAttribute("role", "tab");
+        btn.setAttribute("aria-selected", "false");
+        btn.dataset.tab = key;
+        btn.textContent = title;
+        tabbar.appendChild(btn);
+        wireTabClick(btn);
+
+        var panel = document.createElement("div");
+        panel.className = "tabpanel";
+        panel.id = "panel-" + key;
+
+        var section = document.createElement("section");
+        section.className = "block";
+        var head = document.createElement("div");
+        head.className = "section-head";
+        var h2 = document.createElement("h2");
+        h2.textContent = title;
+        head.appendChild(h2);
+        section.appendChild(head);
+        var gridDiv = document.createElement("div");
+        gridDiv.id = gridId;
+        section.appendChild(gridDiv);
+        panel.appendChild(section);
+
+        wrap.insertBefore(panel, footerEl);
+      }
+
+      renderFreeformGrid(gridId, extra[title] && extra[title].grid);
+    });
+  }
+
+  // ---------------- Countdown ----------------
+  function renderCountdown(inicioISO) {
+    var tripStart = new Date(inicioISO + "T00:00:00");
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var diffDays = Math.round((tripStart - today) / 86400000);
+    var numEl = document.getElementById("countdown-num");
+    var labelEl = document.getElementById("countdown-label");
+    if (diffDays > 0) {
+      numEl.textContent = diffDays;
+      labelEl.textContent = "días para el viaje";
+    } else if (diffDays === 0) {
+      numEl.textContent = "🏖";
+      labelEl.textContent = "¡Es hoy!";
+    } else {
+      numEl.textContent = "🌊";
+      labelEl.textContent = "buen viaje";
+    }
+  }
+
+  // ---------------- Resumen: balance por grupo ----------------
+  function balancePill(owed, paid, pending) {
+    var balance = paid - owed;
+    if (pending) return { cls: "pendiente", text: "Pendiente confirmar" };
+    if (balance >= 0) return { cls: "aldia", text: "Al día" };
+    return { cls: "debe", text: "Debe " + fmt(-balance) };
+  }
+
+  function faltaCabanaText(falta, porPersona) {
+    if (!falta) return "Cabaña pagada \u2713";
+    return "Falta cabaña: <b>" + fmt(falta) + "</b>" +
+      (porPersona ? " (\u2248 " + fmt(porPersona) + " por persona)" : "");
+  }
+
+  function renderGroups(grupos) {
+    var list = document.getElementById("balance-list");
+    list.innerHTML = "";
+    grupos.forEach(function (g) {
+      var pct = g.owed > 0 ? Math.max(0, Math.min(100, (g.paid / g.owed) * 100)) : 0;
+      var pill = balancePill(g.owed, g.paid, g.pending);
+      var card = document.createElement("div");
+      card.className = "b-card";
+      card.innerHTML =
+        '<div class="b-top">' +
+          '<div><span class="b-name">' + g.nombre + '</span> &nbsp;<span class="b-sub">' + g.sub + '</span></div>' +
+          '<span class="pill ' + pill.cls + '">' + pill.text + '</span>' +
+        '</div>' +
+        '<div class="b-bar-row">' +
+          '<div class="b-bar"><div class="b-bar-fill" style="width:' + pct + '%"></div></div>' +
+          '<span class="b-figs"><b>' + fmt(g.paid) + '</b> / ' + fmt(g.owed) + '</span>' +
+        '</div>' +
+        '<p class="section-note" style="margin-top:6px">' + faltaCabanaText(g.faltaCabana, g.faltaPorPersona) + '</p>';
+      list.appendChild(card);
+    });
+  }
+
+  // ---------------- Personas ----------------
+  function renderPersonas(personas) {
+    var list = document.getElementById("personas-list");
+    list.innerHTML = "";
+    if (!personas || personas.length === 0) {
+      list.innerHTML = '<div class="empty-state">Sin datos de personas todavía.</div>';
+      return;
+    }
+    personas.forEach(function (p) {
+      var pct = p.totalACargo > 0 ? Math.max(0, Math.min(100, (p.totalAbonado / p.totalACargo) * 100)) : 0;
+      var pill = balancePill(p.totalACargo, p.totalAbonado, false);
+      var sub = p.grupo + " · " + p.noches + " noches" + (p.participaGastos ? "" : " · no participa en gastos variables");
+      var card = document.createElement("div");
+      card.className = "b-card";
+      card.innerHTML =
+        '<div class="b-top">' +
+          '<div><span class="b-name">' + p.nombre + '</span> &nbsp;<span class="b-sub">' + sub + '</span></div>' +
+          '<span class="pill ' + pill.cls + '">' + pill.text + '</span>' +
+        '</div>' +
+        '<div class="b-bar-row">' +
+          '<div class="b-bar"><div class="b-bar-fill" style="width:' + pct + '%"></div></div>' +
+          '<span class="b-figs"><b>' + fmt(p.totalAbonado) + '</b> / ' + fmt(p.totalACargo) + '</span>' +
+        '</div>' +
+        '<p class="section-note" style="margin-top:6px">' + faltaCabanaText(p.faltaCabana) + '</p>' +
+        (p.nota ? '<p class="section-note" style="margin-top:8px">' + p.nota + '</p>' : '') +
+        (extraFieldsText(p.extra) ? '<p class="section-note" style="margin-top:4px">' + extraFieldsText(p.extra) + '</p>' : '');
+      list.appendChild(card);
+    });
+  }
+
+  // ---------------- Extra fields (unknown new columns) ----------------
+  // Any column a family member adds to Personas/Abonos/Gastos that isn't
+  // one the Lambda already models shows up here generically - keeps a new
+  // column from silently disappearing, without needing a code change.
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function extraFieldsText(extra) {
+    if (!extra) return "";
+    var keys = Object.keys(extra);
+    if (keys.length === 0) return "";
+    return keys
+      .map(function (k) { return escapeHtml(k) + ": " + escapeHtml(extra[k]); })
+      .join(" · ");
+  }
+
+  // ---------------- Ledgers: Gastos / Abonos ----------------
+  function renderLedger(containerId, rows, emptyText, rowRenderer) {
+    var el = document.getElementById(containerId);
+    if (!rows || rows.length === 0) {
+      el.innerHTML = '<div class="empty-state">' + emptyText + '</div>';
+      return;
+    }
+    var box = document.createElement("div");
+    box.className = "ledger";
+    rows.forEach(function (r) {
+      var row = document.createElement("div");
+      row.className = "ledger-row";
+      row.innerHTML = rowRenderer(r);
+      box.appendChild(row);
+    });
+    el.innerHTML = "";
+    el.appendChild(box);
+  }
+
+  function gastoRowHtml(g) {
+    var extraText = extraFieldsText(g.extra);
+    return '<div class="ledger-main"><span>' + (g.descripcion || "(sin descripción)") + " — " + g.quienPago + '</span>' +
+      '<span class="ledger-meta">' + g.categoria + ' · ' + fmtDate(g.fecha) +
+      (extraText ? ' · ' + extraText : '') + '</span></div>' +
+      '<span class="ledger-val">' + fmt(g.valor) + '</span>';
+  }
+
+  function abonoRowHtml(a) {
+    var extraText = extraFieldsText(a.extra);
+    return '<div class="ledger-main"><span>' + a.nombre + " — " + a.concepto + '</span>' +
+      '<span class="ledger-meta">' + a.grupo + ' · ' + fmtDate(a.fecha) +
+      (extraText ? ' · ' + extraText : '') + '</span></div>' +
+      '<span class="ledger-val">' + fmt(a.valor) + '</span>';
+  }
+
+  // ---------------- Freeform grid renderer (Estimado / Tesla) ----------------
+  function renderFreeformGrid(containerId, grid) {
+    var container = document.getElementById(containerId);
+    container.innerHTML = "";
+    if (!grid || grid.length === 0) {
+      container.innerHTML = '<div class="empty-state">Todavía no se ha agregado esta pestaña a la hoja de cálculo compartida.</div>';
+      return;
+    }
+    var currentTable = null;
+    grid.forEach(function (row, idx) {
+      if (idx === 0) return; // row 0 is the sheet's own emoji title, already shown as the tab heading
+      var cells = row.map(function (c) { return c === null || c === undefined ? "" : String(c); });
+      var nonEmpty = cells.filter(function (c) { return c.trim() !== ""; });
+
+      if (nonEmpty.length === 0) { currentTable = null; return; }
+
+      if (nonEmpty.length === 1) {
+        currentTable = null;
+        var text = nonEmpty[0];
+        var isLong = text.length > 70;
+        var el = document.createElement(isLong ? "p" : "div");
+        el.className = isLong ? "grid-note" : "grid-heading";
+        el.textContent = text;
+        container.appendChild(el);
+        return;
+      }
+
+      if (nonEmpty.length >= 3) {
+        if (!currentTable) {
+          var wrap = document.createElement("div");
+          wrap.className = "grid-table-wrap";
+          currentTable = document.createElement("table");
+          currentTable.className = "grid-table";
+          wrap.appendChild(currentTable);
+          container.appendChild(wrap);
+          var thead = document.createElement("thead");
+          var htr = document.createElement("tr");
+          cells.forEach(function (c) {
+            var th = document.createElement("th");
+            th.textContent = c;
+            htr.appendChild(th);
+          });
+          thead.appendChild(htr);
+          currentTable.appendChild(thead);
+          currentTable.appendChild(document.createElement("tbody"));
+        } else {
+          var tbody = currentTable.querySelector("tbody");
+          var tr = document.createElement("tr");
+          cells.forEach(function (c) {
+            var td = document.createElement("td");
+            td.textContent = c;
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        }
+        return;
+      }
+
+      // exactly 2 non-empty cells -> label/value line
+      currentTable = null;
+      var kv = document.createElement("div");
+      kv.className = "grid-kv";
+      var label = document.createElement("span");
+      label.className = "grid-kv-label";
+      label.textContent = cells[0];
+      var value = document.createElement("span");
+      value.className = "grid-kv-value";
+      value.textContent = cells.slice(1).filter(function (c) { return c.trim() !== ""; }).join(" · ");
+      kv.appendChild(label);
+      kv.appendChild(value);
+      container.appendChild(kv);
+    });
+  }
+
+  // ---------------- Assemble ----------------
+  function render(data) {
+    document.getElementById("dates-line").innerHTML =
+      data.cabaña.condominio + " · <b>" + fmtDate(data.cabaña.inicio) + "</b> &rarr; <b>" +
+      fmtDate(data.cabaña.fin) + "</b> · " + data.cabaña.noches + " noches";
+    renderCountdown(data.cabaña.inicio);
+    document.getElementById("nota-fecha-limite").textContent = data.cabaña.fechaLimitePago || "por confirmar";
+
+    document.getElementById("stat-total").textContent = fmt(data.totales.granTotal);
+    document.getElementById("stat-abonado").textContent = fmt(data.totales.abonado);
+    document.getElementById("stat-pendiente").textContent = fmt(data.totales.pendienteRecaudar);
+    document.getElementById("stat-persona").textContent = fmt(data.totales.faltaCabanaPorPersona || 0);
+
+    renderGroups(data.grupos || []);
+    renderPersonas(data.personas || []);
+
+    renderLedger("resumen-gastos", (data.ultimosGastos || []).slice(0, 5),
+      "Aún no se han registrado gastos. Se van sumando aquí a medida que se registran en la hoja.",
+      gastoRowHtml);
+    renderLedger("gastos-full", data.gastos || [],
+      "Aún no se han registrado gastos.", gastoRowHtml);
+    renderLedger("abonos-full", data.abonos || [],
+      "Aún no se han registrado abonos.", abonoRowHtml);
+
+    renderExtraTabs(data.extra || {});
+    openTabFromHash();
+
+    var updated = data.actualizado ? new Date(data.actualizado).toLocaleString("es-CO") : "—";
+    document.getElementById("footer-note").textContent = "Datos en vivo desde la hoja de cálculo · actualizado " + updated;
+  }
+
+  function showError() {
+    document.getElementById("balance-list").innerHTML =
+      '<div class="error-state">No se pudo cargar la información en vivo. Intenta recargar en un momento, ' +
+      'o revisa la hoja de cálculo directamente.</div>';
+    document.getElementById("footer-note").textContent = "Sin conexión con los datos en vivo.";
+  }
+
+  if (!API_URL || API_URL.indexOf("REPLACE") === 0) {
+    showError();
+    document.getElementById("footer-note").textContent =
+      "config.js no está configurado todavía (falta el API URL de Terraform).";
+    return;
+  }
+
+  fetch(API_URL)
+    .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(render)
+    .catch(showError);
+})();
+</script>
+</body>
+</html>

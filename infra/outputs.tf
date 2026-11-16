@@ -27,3 +27,8 @@ output "lambda_function_name" {
   description = "Name of the deployed Lambda function."
   value       = aws_lambda_function.summary.function_name
 }
+
+output "api_chat_endpoint" {
+  description = "Full URL of the POST /api/chat endpoint (Tesla assistant)."
+  value       = "${aws_apigatewayv2_stage.default.invoke_url}api/chat"
+}

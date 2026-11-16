@@ -38,7 +38,8 @@ Ver `docs/ARQUITECTURA.md` para el cómo.
 ```
 .
 ├── Gastos_Covenas.xlsx      # respaldo/plantilla original — la fuente real es el Sheets, no este archivo
-├── frontend/                # sitio estático (index.html + config.js con el API URL)
+├── frontend/                # sitio estático multipágina: index.html (inicio), cuentas.html, tesla.html
+│                            #   + site.css compartido, tesla.js/tesla-data.js/tesla.css y config.js (API URL)
 ├── lambda/                  # handler.py — lee el Sheets, arma el JSON que consume el frontend
 ├── infra/                   # Terraform (S3, CloudFront, Lambda, API Gateway, IAM, OIDC)
 │   └── README.md            # cómo desplegar a mano (init/plan/apply)
@@ -62,11 +63,17 @@ terraform plan -var "google_spreadsheet_id=<sheet id>"
 `terraform apply` en `main` corre solo en CI, y pide tu aprobación manual antes de aplicar (ver
 `docs/ARQUITECTURA.md` → CI/CD).
 
-## Pestaña Tesla
+## Páginas
+
+- `index.html`: inicio con cuenta regresiva, estado del recaudo y accesos.
+- `cuentas.html`: balance por grupo/persona, gastos y abonos (enlazable: `cuentas.html#estimado`).
+- `tesla.html`: ruta Tesla con simulador y asistente IA.
+
+### Ruta Tesla
 
 `frontend/tesla.js` + `tesla-data.js` + `tesla.css`: simulador de la ruta Medellín ⇄ Coveñas en Model Y RWD
 (paradas de carga, escenarios, plan B, comparador). Corre solo en el navegador; los datos y supuestos están en
-`tesla-data.js`. Se abre directo con `#tesla`.
+`tesla-data.js`. El asistente usa `POST /api/chat` (Groq + búsqueda web).
 
 ## Costo
 
