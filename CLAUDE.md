@@ -26,6 +26,8 @@ Signed-off-by: Jaime Henao <arheanja@gmail.com>
   never state a hard date for it.
 - **Groups (12 confirmados)**: Andrés (+ Diana, Thomas), Ana (+ Isabella), Alex (+ Alyson), Sandra
   (+ Juanjo), Casa Mery (Daniel Felipe Ortega + Marlen Moncada), Paty (Patricia Arbelaez, sola).
+- **Live Sheet drift**: the Personas tab now also lists Ruben and Jhon (not in the groups above) and
+  Julián with 3 nights counted in the rate — the Sheet wins over this list; re-check it before quoting numbers.
 - **Extra, unconfirmed**: Julián (con Alyson / Grupo Alex), llegaría después del 31 dic — se cobra
   proporcional a sus noches, no cuenta en los 12 base.
 - **Cost-splitting model**: per person-night, not a flat per-person split — `rate = costo_cabaña /
@@ -54,11 +56,19 @@ Signed-off-by: Jaime Henao <arheanja@gmail.com>
   repo, superseded by the AWS dashboard below) — a manual snapshot, regenerated on request, not
   live-connected to the sheet.
 
+## Tesla tab (`frontend/tesla*.{js,css}`)
+
+Static, client-side simulator for Medellín ⇄ Coveñas in a Model Y RWD (no API). Data/assumptions live in
+`tesla-data.js` (calibrated against real WhatsApp trip reports; unconfirmed chargers are flagged
+`hipotesis`). The Sheet's own `Tesla` tab is intentionally hidden in the dashboard in favor of this one.
+Known fact: Fátima (La Apartada, ≈18 km past Caucasia) is the only fast charger between Popalito and
+Montería and delivers ~20 kW in practice.
+
 ## AWS live dashboard — deployed
 
 **Live**: https://covenas.taxopsapp.com/ (custom domain, DNS on Cloudflare — see `infra/domain.tf`;
-falls back to https://d3v68ejd8s9g4n.cloudfront.net/ directly if a network's DNS filters new
-domains) · reads `https://rbzg7ddzyh.execute-api.us-east-1.amazonaws.com/api/summary` (Lambda-backed
+has no direct-CloudFront fallback documented since the 2026-09 account migration) ·
+reads `https://4ykqwctvr7.execute-api.us-east-1.amazonaws.com/api/summary` (Lambda-backed
 API).
 
 - **Data flow**: Google Sheets is the source of truth (family edits there — the native Sheets file,
@@ -68,11 +78,10 @@ API).
   proration + group-balance logic server-side, and returns JSON. `frontend/index.html` fetches that
   JSON (endpoint configured in `frontend/config.js`) and renders it — same visual design as the
   original Claude Artifact dashboard.
-- **IaC**: Terraform in `infra/`, state in S3 (`taxops11-tfstate-786567028012`, key
-  `trip-covenas/terraform.tfstate` — reuses TaxOps-11's bootstrap bucket with its own key prefix,
+- **IaC**: Terraform in `infra/`, state in S3 (`dianbot-tfstate-080891698277`, key
+  `trip-covenas/terraform.tfstate` — reuses the ai-platform account's tfstate bucket with its own key,
   no shared lock).
-- **AWS account**: personal (786567028012), profile `trip-covenas` (SSO, same `sso-session` as
-  TaxOps-11's `taxops-admin`). **GitHub**: personal account `jaimehenao8126`, not the work account
+- **AWS account**: ai-platform-arheanja (080891698277), profile `ai-platform` (see `.envrc`). **GitHub**: personal account `jaimehenao8126`, not the work account
   — see `.envrc` (direnv auto-loads `AWS_PROFILE` + `GH_CONFIG_DIR` on `cd`).
 - **CI/CD**: `.github/workflows/terraform-plan.yml` (PRs touching `infra/`, `lambda/`, or
   `frontend/`) and `terraform-apply.yml` (push to `main` or manual dispatch, gated behind the

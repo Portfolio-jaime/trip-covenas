@@ -4,8 +4,8 @@ Gasto compartido de un viaje familiar a Coveñas (Sucre, Colombia), llevado en u
 de Google que la familia edita desde el celular, con un dashboard en vivo que lee esa hoja y
 muestra el balance de cada quien sin que nadie tenga que abrir Excel.
 
-**🌊 Dashboard en vivo:** https://d3v68ejd8s9g4n.cloudfront.net/
-**API (JSON):** https://rbzg7ddzyh.execute-api.us-east-1.amazonaws.com/api/summary
+**🌊 Dashboard en vivo:** https://covenas.taxopsapp.com/
+**API (JSON):** https://4ykqwctvr7.execute-api.us-east-1.amazonaws.com/api/summary
 
 ---
 
@@ -30,7 +30,7 @@ Ver `docs/ARQUITECTURA.md` para el cómo.
 | Backend | AWS Lambda (Python 3.12) + API Gateway HTTP API |
 | Frontend | HTML/CSS/JS estático, sin build step |
 | Hosting | S3 + CloudFront |
-| IaC | Terraform, state en S3 (bucket compartido con `TaxOps-11`, key propia) |
+| IaC | Terraform, state en S3 (bucket tfstate de la cuenta `ai-platform`, key propia) |
 | CI/CD | GitHub Actions, auth vía OIDC (sin llaves de AWS en GitHub) |
 
 ## Estructura del repo
@@ -61,6 +61,12 @@ terraform plan -var "google_spreadsheet_id=<sheet id>"
 
 `terraform apply` en `main` corre solo en CI, y pide tu aprobación manual antes de aplicar (ver
 `docs/ARQUITECTURA.md` → CI/CD).
+
+## Pestaña Tesla
+
+`frontend/tesla.js` + `tesla-data.js` + `tesla.css`: simulador de la ruta Medellín ⇄ Coveñas en Model Y RWD
+(paradas de carga, escenarios, plan B, comparador). Corre solo en el navegador; los datos y supuestos están en
+`tesla-data.js`. Se abre directo con `#tesla`.
 
 ## Costo
 
