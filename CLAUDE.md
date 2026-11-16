@@ -9,6 +9,12 @@ a family trip to Coveñas, Colombia, and to give the family a way to see the num
 a spreadsheet. See "Current state" and "AWS live dashboard — deployed" below for what actually
 exists before assuming commands or architecture.
 
+## Privacy rule
+
+The repo is public. WhatsApp exports (`Chat de WhatsApp*/`) and `.vcf` contacts hold third-party phone
+numbers: keep them on disk only (they're in `.gitignore`), never commit them. The earlier history still
+contains them until the repo is made private or the history is rewritten (see `docs/ARQUITECTURA.md` §6).
+
 ## Commit / PR signature
 
 Never add Claude/Anthropic attribution here — no `Co-Authored-By: Claude...` line, no
