@@ -52,5 +52,5 @@ __pycache__/
 .envrc
 
 # Exportaciones de WhatsApp y contactos: datos de terceros (telefonos, nombres), nunca al repo.
-Chat de WhatsApp*/
+Chat de WhatsApp*
 *.vcf
