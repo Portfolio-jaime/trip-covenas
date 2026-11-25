@@ -513,9 +513,10 @@
     });
     lines.push("TRAMOS (km, Wh/km ida): " + Object.keys(D.legs).map(function (k) {
       return k + " " + D.legs[k].km + "/" + D.legs[k].wh;
-    }).join("; ") + ". Regreso Fátima→Popalito gasta ~27% más.");
+    }).join("; ") + ". Regreso Fátima→Popalito gasta ~15% más que la ida (más si se va rápido).");
     lines.push("REPORTES REALES:");
-    D.reports.forEach(function (r) { lines.push("- " + r.date + " " + cut(r.route, 40) + ": " + cut(r.text, 150)); });
+    (D.lessons || []).forEach(function (t) { lines.push("* " + cut(t, 170)); });
+    D.reports.forEach(function (r) { lines.push("- " + r.date + " " + cut(r.route, 36) + ": " + cut(r.text, 130)); });
     lines.push("SIMULACIÓN ACTUAL: " + state.dir + ", ruta " + state.route + ", sale con " + state.startSoc + "%, estilo " + state.style +
       ", reserva " + state.reserve + "%, cargadores '" + state.scenario + "'.");
     lines.push("Paradas: " + (Object.keys(state.stops).filter(function (k) { return state.stops[k].charge; }).map(function (k) {
@@ -718,8 +719,14 @@
     }).join("");
   }
 
+  function lessonsHtml() {
+    if (!D.lessons || !D.lessons.length) return "";
+    return '<div class="tz-card tz-lessons"><div class="tz-card-title">Lo que dicen los reportes</div><ul>' +
+      D.lessons.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul></div>";
+  }
+
   function reportsHtml() {
-    return D.reports.map(function (r) {
+    return lessonsHtml() + D.reports.map(function (r) {
       return '<div class="tz-card"><div class="tz-card-top"><div class="tz-card-title">' + esc(r.route) + '</div><span class="tz-badge info">' +
         esc(r.date) + (r.car !== "—" ? " · " + esc(r.car) : "") + "</span></div><p class=\"tz-card-text\">" + esc(r.text) + "</p></div>";
     }).join("");
@@ -796,7 +803,7 @@
       '<div class="tz-insights">' +
         '<div class="tz-insight"><b>Fátima manda</b><span>Es el único cargador rápido en ~300 km y rinde ~20 kW.</span></div>' +
         '<div class="tz-insight"><b>Plan B</b><span>Eco desde Popalito al 100% llega a Montería con ~15%.</span></div>' +
-        '<div class="tz-insight"><b>El regreso pesa</b><span>Fátima→Popalito gasta ~27% más que la ida.</span></div>' +
+        '<div class="tz-insight"><b>El regreso pesa</b><span>Fátima→Popalito gasta ~15% más que la ida; rápido, llegas con ~10%.</span></div>' +
       "</div>" +
       '<h3 class="tz-h3">Elige un escenario</h3><div class="tz-chips" id="tz-presets"></div>' +
       '<div class="tz-result"><div class="tz-result-head"><div id="tz-headline"></div><div id="tz-verdict"></div></div>' +
@@ -859,7 +866,7 @@
     });
   }
 
-  window.TeslaSim = { simulate: simulate, splitReply: splitReply, richText: richText };
+  window.TeslaSim = { simulate: simulate, splitReply: splitReply, richText: richText, buildContext: buildContext };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount);
   else mount();
 })();

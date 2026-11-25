@@ -168,3 +168,7 @@ table.grid-table td.num, table.grid-table th.num { text-align: right; font-varia
 .tz-md-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft);
   background: var(--surface-2); padding: 8px 10px; white-space: nowrap; }
 .tz-md-table td { padding: 8px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+
+.tz-lessons { grid-column: 1 / -1; border-left: 3px solid var(--coral); }
+.tz-lessons ul { margin: 10px 0 0; padding-left: 20px; font-size: 13.5px; line-height: 1.55; color: var(--ink-soft); }
+.tz-lessons li { margin: 0 0 6px; }
