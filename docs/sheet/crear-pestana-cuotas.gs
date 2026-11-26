@@ -29,6 +29,7 @@ function crearPestanaCuotas() {
   verificarEstructura_(ss);
 
   var sh = ss.getSheetByName(CUOTAS.SHEET) || ss.insertSheet(CUOTAS.SHEET);
+  var sep = separadorDeArgumentos_(sh);
   var F = CUOTAS.FIRST, L = CUOTAS.LAST;
   var n = L - F + 1;
 
@@ -55,7 +56,7 @@ function crearPestanaCuotas() {
       '=ROUND(SUM($I$' + F + ':$I$' + L + ')-SUM($D$' + F + ':$D$' + L + '),0)']
   ];
   sh.getRange(4, 1, resumen.length, 1).setValues(resumen.map(function (r) { return [r[0]]; }));
-  sh.getRange(4, 2, resumen.length, 1).setFormulas(resumen.map(function (r) { return [r[1]]; }));
+  sh.getRange(4, 2, resumen.length, 1).setFormulas(resumen.map(function (r) { return [conSeparador_(r[1], sep)]; }));
 
   // --- Encabezados (fila 12) ---
   sh.getRange(F - 1, 1, 1, 12).setValues([[
@@ -65,7 +66,9 @@ function crearPestanaCuotas() {
 
   // --- Una fila por persona (columnas A a K; la L es manual y no se toca) ---
   var filas = [];
-  for (var r = F; r <= L; r++) { filas.push(formulasFila_(r)); }
+  for (var r = F; r <= L; r++) {
+    filas.push(formulasFila_(r).map(function (f) { return conSeparador_(f, sep); }));
+  }
   sh.getRange(F, 1, n, 11).setFormulas(filas);
 
   darFormato_(sh);
@@ -80,6 +83,33 @@ function crearPestanaCuotas() {
   sh.activate();
   ss.toast('B5 = costo de la cabaña; B9 y B10 deben dar 0.', 'Pestaña "Cuotas" lista', 15);
   Logger.log(msg);
+}
+
+/**
+ * Las fórmulas se escriben con coma entre argumentos, pero en hojas con configuración
+ * regional que usa coma decimal (español, por ejemplo) el separador es punto y coma, y
+ * setFormula no lo traduce: queda "#ERROR!" (error de análisis). Se prueba en una celda
+ * libre cuál acepta esta hoja.
+ */
+function separadorDeArgumentos_(sh) {
+  var celda = sh.getRange('Z1');
+  celda.setFormula('=SUM(1,2)');
+  SpreadsheetApp.flush();
+  var acepta = celda.getValue() === 3;
+  celda.clearContent();
+  return acepta ? ',' : ';';
+}
+
+/** Cambia las comas que separan argumentos por `sep`, sin tocar las que estén dentro de "texto". */
+function conSeparador_(formula, sep) {
+  if (sep === ',') return formula;
+  var out = '', enTexto = false;
+  for (var i = 0; i < formula.length; i++) {
+    var ch = formula.charAt(i);
+    if (ch === '"') enTexto = !enTexto;
+    out += (ch === ',' && !enTexto) ? sep : ch;
+  }
+  return out;
 }
 
 /** Fórmulas de las columnas A a K para la fila r de Cuotas. */
