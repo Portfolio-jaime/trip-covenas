@@ -330,6 +330,31 @@ def parse_personas(values: list[list[Any]]) -> list[dict]:
     return _parse_rows(values, COL_NOMBRE, row_factory, known)
 
 
+def parse_cuotas(values: list[list[Any]]) -> dict[str, dict]:
+    """The `Cuotas` tab computes, in the sheet itself, how much of each family's
+    abonos covers each person (principal first, then the next one, and so on).
+    The sheet is the source of truth for that rule, so when the tab exists the
+    dashboard shows its numbers instead of recomputing a different split.
+
+    Returns {normalized name: {"cubierto", "falta", "principal"}}; an empty dict
+    when the tab has no recognizable header (then the caller falls back).
+    """
+    header_idx, colmap, _ = _find_header_row(values, COL_NOMBRE)
+    if header_idx == -1 or "cubierto" not in colmap or "falta" not in colmap:
+        return {}
+    out: dict[str, dict] = {}
+    for row in values[header_idx + 1 :]:
+        nombre = _cell(row, colmap, COL_NOMBRE)
+        if nombre is None:
+            continue
+        out[_normalize(nombre)] = {
+            "cubierto": _to_number(_cell(row, colmap, "cubierto", 0)),
+            "falta": _to_number(_cell(row, colmap, "falta", 0)),
+            "principal": _normalize(_cell(row, colmap, "rol", "")) == "principal",
+        }
+    return out
+
+
 def _trim_grid(values: list[list[Any]]) -> list[list[Any]]:
     """Estimado and Tesla are free-form sheets (section headings, label/
     value pairs, and the odd table, not one clean table) - rather than
@@ -462,6 +487,13 @@ def build_summary(
             return 0.0
         return falta_cabana_grupo[p["grupo"]] * p["noches"] / noches_g
 
+    # When the sheet has a `Cuotas` tab, its per-person split wins (see parse_cuotas).
+    cuotas_hoja: dict[str, dict] = {}
+    for title, tab_values in (extra_sheets or {}).items():
+        if _normalize(title) == "cuotas":
+            cuotas_hoja = parse_cuotas(tab_values)
+            break
+
     # Per-person detail - the full "Personas" tab, individually granular
     # (unlike `grupos` below, which rolls this up per family group).
     personas_out = []
@@ -470,6 +502,9 @@ def build_summary(
         costo_gastos = gasto_share if p["participaGastos"] else 0.0
         total_a_cargo = costo_cabana + costo_gastos
         abonado = _abonado_por(p["nombre"])
+        hoja = cuotas_hoja.get(_normalize(p["nombre"]))
+        aplicado = hoja["cubierto"] if hoja else None
+        falta_cabana = hoja["falta"] if hoja else _falta_persona(p)
         personas_out.append(
             {
                 "nombre": p["nombre"],
@@ -481,8 +516,10 @@ def build_summary(
                 "costoGastos": _to_money_int(costo_gastos),
                 "totalACargo": _to_money_int(total_a_cargo),
                 "totalAbonado": _to_money_int(abonado),
-                "saldo": _to_money_int(abonado - total_a_cargo),
-                "faltaCabana": _to_money_int(_falta_persona(p)),
+                "saldo": _to_money_int((aplicado if hoja else abonado) - total_a_cargo),
+                "aplicado": _to_money_int(aplicado) if hoja else None,
+                "esPrincipal": hoja["principal"] if hoja else None,
+                "faltaCabana": _to_money_int(falta_cabana),
                 "extra": p.get("extra", {}),
             }
         )
@@ -568,6 +605,7 @@ def build_summary(
                 sum(falta_cabana_grupo.values()) / len(personas) if personas else 0
             ),
             "personas": len(personas),
+            "cuotasDesdeHoja": bool(cuotas_hoja),
         },
         "grupos": grupos_out,
         "personas": personas_out,
@@ -632,7 +670,7 @@ _CORE_SHEET_TITLES = {"cabana", "personas", "abonos", "gastos", "resumen", "bala
 # How wide/tall a freeform "extra" tab is read - generous on purpose since
 # these are open-ended reference sheets (Tesla, Carros, Estimado, and
 # whatever gets added next), not a tight data table.
-_EXTRA_TAB_RANGE_SUFFIX = "!A1:H200"
+_EXTRA_TAB_RANGE_SUFFIX = "!A1:L200"
 
 
 def _sheets_get(url: str, access_token: str, params: dict) -> requests.Response:

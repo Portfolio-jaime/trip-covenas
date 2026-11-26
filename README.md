@@ -26,6 +26,9 @@ Sitio del viaje familiar a Coveñas (Sucre, Colombia): **cuentas claras por pers
 - La cabaña ($6.860.000 COP, 6 noches) se reparte **por noche y por persona**, no parejo: quien
   llega o se va distinto paga proporcional, sin casos especiales.
 - Cada grupo familiar ve lo que le corresponde, lo abonado, lo que falta y si está al día.
+- **Cuotas por persona**: el abono de cada familia cubre primero al principal y lo que sobra pasa a
+  los demás, así se ve cuánto debe cada uno. Se calcula en la hoja
+  ([`docs/cuotas-por-persona.md`](docs/cuotas-por-persona.md)).
 - Los gastos variables se registran en la hoja y se reparten entre quienes participan.
 
 **Ruta Tesla (Medellín ⇄ Coveñas, Model Y RWD)**
@@ -79,10 +82,13 @@ de mover los datos fuera de Sheets) está en [`docs/ARQUITECTURA.md`](docs/ARQUI
 │   └── config.js           # URL del API
 ├── lambda/
 │   ├── handler.py          # GET /api/summary: lee la hoja y calcula balances
-│   └── chat.py             # POST /api/chat: asistente con Groq
+│   ├── chat.py             # POST /api/chat: asistente con Groq
 ├── infra/                  # Terraform (S3, CloudFront, Lambdas, API, IAM, OIDC)
+│   └── tests/              # pruebas (python3 -m unittest discover -s lambda/tests)
 ├── docs/
 │   ├── ARQUITECTURA.md     # diagramas y decisiones
+│   ├── cuotas-por-persona.md
+│   ├── sheet/              # Apps Script que crea la pestaña Cuotas
 │   └── google-service-account-setup.md
 ├── .github/workflows/      # terraform-plan (PR) y terraform-apply (main)
 └── Gastos_Covenas.xlsx     # instantánea histórica; la fuente real es la hoja en vivo
