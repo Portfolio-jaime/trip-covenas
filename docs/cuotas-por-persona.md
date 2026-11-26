@@ -16,7 +16,7 @@ Si no existe, la página sigue con el reparto proporcional de antes.
    y guarda (icono de disco).
 4. Elige la función `crearPestanaCuotas` y pulsa *Ejecutar*. Google pide permiso para editar la hoja:
    acéptalo (es tu propio script).
-5. Al terminar sale un aviso. Revisa los controles (abajo).
+5. Al terminar se abre la pestaña "Cuotas" con un aviso pequeño abajo a la derecha (también queda en el *Registro de ejecución*). Revisa los controles (abajo). Si la ejecución pasa de un minuto, algo va mal: detenla y revisa el registro.
 
 El script solo escribe en la pestaña "Cuotas"; no toca Personas, Abonos, Cabaña ni ninguna otra.
 Antes de escribir comprueba que esas pestañas tengan la estructura esperada (encabezados en la fila 2 de
