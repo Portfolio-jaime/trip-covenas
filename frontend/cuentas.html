@@ -193,7 +193,10 @@
         btn.setAttribute("aria-selected", "false");
         btn.dataset.tab = key;
         btn.textContent = title;
-        tabbar.appendChild(btn);
+        // "Cuotas" va justo después de "Personas"; el resto, al final.
+        var personasBtn = tabbar.querySelector('.tab-btn[data-tab="personas"]');
+        if (key === "cuotas" && personasBtn) tabbar.insertBefore(btn, personasBtn.nextSibling);
+        else tabbar.appendChild(btn);
         wireTabClick(btn);
 
         var panel = document.createElement("div");
@@ -216,7 +219,7 @@
         wrap.insertBefore(panel, footerEl);
       }
 
-      renderFreeformGrid(gridId, extra[title] && extra[title].grid);
+      renderFreeformGrid(gridId, extra[title] && extra[title].grid, { formatNumbers: key === "cuotas" });
     });
   }
 
@@ -285,19 +288,23 @@
       return;
     }
     personas.forEach(function (p) {
-      var pct = p.totalACargo > 0 ? Math.max(0, Math.min(100, (p.totalAbonado / p.totalACargo) * 100)) : 0;
-      var pill = balancePill(p.totalACargo, p.totalAbonado, false);
+      // Con la pestaña "Cuotas" en la hoja, `aplicado` es lo que el abono de la
+      // familia le cubre a esta persona; sin ella, se usa lo que abonó en persona.
+      var pagado = (p.aplicado !== null && p.aplicado !== undefined) ? p.aplicado : p.totalAbonado;
+      var pct = p.totalACargo > 0 ? Math.max(0, Math.min(100, (pagado / p.totalACargo) * 100)) : 0;
+      var pill = balancePill(p.totalACargo, pagado, false);
       var sub = p.grupo + " · " + p.noches + " noches" + (p.participaGastos ? "" : " · no participa en gastos variables");
+      var principal = p.esPrincipal ? ' <span class="pill rol">Principal</span>' : '';
       var card = document.createElement("div");
       card.className = "b-card";
       card.innerHTML =
         '<div class="b-top">' +
-          '<div><span class="b-name">' + p.nombre + '</span> &nbsp;<span class="b-sub">' + sub + '</span></div>' +
+          '<div><span class="b-name">' + p.nombre + '</span>' + principal + ' &nbsp;<span class="b-sub">' + sub + '</span></div>' +
           '<span class="pill ' + pill.cls + '">' + pill.text + '</span>' +
         '</div>' +
         '<div class="b-bar-row">' +
           '<div class="b-bar"><div class="b-bar-fill" style="width:' + pct + '%"></div></div>' +
-          '<span class="b-figs"><b>' + fmt(p.totalAbonado) + '</b> / ' + fmt(p.totalACargo) + '</span>' +
+          '<span class="b-figs"><b>' + fmt(pagado) + '</b> / ' + fmt(p.totalACargo) + '</span>' +
         '</div>' +
         '<p class="section-note" style="margin-top:6px">' + faltaCabanaText(p.faltaCabana) + '</p>' +
         (p.nota ? '<p class="section-note" style="margin-top:8px">' + p.nota + '</p>' : '') +
@@ -361,17 +368,25 @@
   }
 
   // ---------------- Freeform grid renderer (Estimado / Tesla) ----------------
-  function renderFreeformGrid(containerId, grid) {
+  // opts.formatNumbers: show numeric cells as es-CO integers (1.234.567).
+  // Only "Cuotas" opts in; other tabs keep raw values (they mix units like %, kWh, km).
+  function renderFreeformGrid(containerId, grid, opts) {
+    var formatNumbers = !!(opts && opts.formatNumbers);
     var container = document.getElementById(containerId);
     container.innerHTML = "";
     if (!grid || grid.length === 0) {
       container.innerHTML = '<div class="empty-state">Todavía no se ha agregado esta pestaña a la hoja de cálculo compartida.</div>';
       return;
     }
+    function cellText(c) {
+      if (c === null || c === undefined) return "";
+      if (formatNumbers && typeof c === "number" && isFinite(c)) return Math.round(c).toLocaleString("es-CO");
+      return String(c);
+    }
     var currentTable = null;
     grid.forEach(function (row, idx) {
       if (idx === 0) return; // row 0 is the sheet's own emoji title, already shown as the tab heading
-      var cells = row.map(function (c) { return c === null || c === undefined ? "" : String(c); });
+      var cells = row.map(cellText);
       var nonEmpty = cells.filter(function (c) { return c.trim() !== ""; });
 
       if (nonEmpty.length === 0) { currentTable = null; return; }

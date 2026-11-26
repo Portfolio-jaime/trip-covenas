@@ -267,6 +267,12 @@ Reglas (viven en `lambda/handler.py`):
    reparte entre sus miembros según sus noches, porque normalmente abona una sola persona por todos.
 5. Un grupo se marca `pending` si su etiqueta o nota indica que no está confirmado (heurística
    genérica, sin nombres escritos en el código).
+6. **Cuotas por persona (en la hoja).** Si existe la pestaña `Cuotas`, el abono de cada familia se
+   aplica en cascada: primero al principal, y lo que sobra a la siguiente persona. Ese cálculo son
+   fórmulas de la hoja (lo instala [`docs/sheet/crear-pestana-cuotas.gs`](sheet/crear-pestana-cuotas.gs)),
+   no código: `parse_cuotas()` solo lo lee y, para cada persona, `faltaCabana`, `aplicado`,
+   `esPrincipal` y `saldo` salen de ahí en vez de la regla 4. `totales.cuotasDesdeHoja` indica
+   cuál de las dos se usó. Detalle: [`docs/cuotas-por-persona.md`](cuotas-por-persona.md).
 
 ---
 

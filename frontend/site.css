@@ -117,6 +117,7 @@
   .pill.debe { background: var(--sunset-red-bg); color: var(--sunset-red); }
   .pill.aldia { background: var(--sea-green-bg); color: var(--sea-green); }
   .pill.pendiente { background: var(--amber-bg); color: var(--amber); }
+  .pill.rol { font-size: 11px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; background: var(--brand); color: #fff; }
   .b-bar-row { display: flex; align-items: center; gap: 10px; }
   .b-bar { flex: 1; height: 7px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
   .b-bar-fill { height: 100%; border-radius: 999px; background: var(--sea-green); }
