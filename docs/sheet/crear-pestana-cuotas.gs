@@ -74,7 +74,12 @@ function crearPestanaCuotas() {
     '• B5 debe ser el costo total de la cabaña.\n' +
     '• B9 y B10 deben dar 0.\n\n' +
     'Si algo no cuadra, no cambies nada en Personas ni en Abonos: avísame primero.';
-  SpreadsheetApp.getUi().alert(msg);
+  // Aviso no bloqueante: un alert() espera a que alguien pulse "Aceptar" en la hoja y,
+  // si se ejecuta desde el editor, la ejecución se corta a los 6 minutos.
+  SpreadsheetApp.flush();
+  sh.activate();
+  ss.toast('B5 = costo de la cabaña; B9 y B10 deben dar 0.', 'Pestaña "Cuotas" lista', 15);
+  Logger.log(msg);
 }
 
 /** Fórmulas de las columnas A a K para la fila r de Cuotas. */
